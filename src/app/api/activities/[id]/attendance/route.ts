@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/session';
 import { hasPermission } from '@/lib/permissions';
 import {
   sendAttendanceRegisteredEmail,
+  sendEmailBatch,
 } from '@/lib/mailer';
 
 type AttendanceStatus = 'PRESENTE' | 'AUSENTE' | 'EXCUSADO';
@@ -248,30 +249,34 @@ export async function POST(
     });
 
     if (activity) {
-      for (const user of usersToNotify) {
-        const record = recordsByUser.get(user.id);
+      await sendEmailBatch({
+  items: usersToNotify,
+  batchSize: 8,
+  delayMs: 1500,
+  send: async (user) => {
+    const record = recordsByUser.get(user.id);
 
-        const status: AttendanceStatus = excusedUserIds.has(user.id)
-          ? 'EXCUSADO'
-          : record?.status ?? 'AUSENTE';
+    const status: AttendanceStatus = excusedUserIds.has(user.id)
+      ? 'EXCUSADO'
+      : record?.status ?? 'AUSENTE';
 
-        try {
-          await sendAttendanceRegisteredEmail({
-            to: user.email,
-            fullName: user.fullName,
-            activityTitle: activity.title,
-            activityDate: new Date(activity.activityDate),
-            location: activity.location,
-            status,
-            notes: record?.notes ?? '',
-          });
-        } catch (mailError) {
-          console.error(
-            `Error enviando correo de asistencia a ${user.email}:`,
-            mailError
-          );
-        }
-      }
+    await sendAttendanceRegisteredEmail({
+      to: user.email,
+      fullName: user.fullName,
+      activityTitle: activity.title,
+      activityDate: new Date(activity.activityDate),
+      location: activity.location,
+      status,
+      notes: record?.notes ?? '',
+    });
+  },
+  onError: (user, mailError) => {
+    console.error(
+      `Error enviando correo de asistencia a ${user.email}:`,
+      mailError
+    );
+  },
+});
     }
 
     return NextResponse.json({

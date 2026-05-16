@@ -365,3 +365,44 @@ export async function sendTemporaryPasswordEmail(
     `,
   });
 }
+export function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+type SendEmailBatchOptions<T> = {
+  items: T[];
+  batchSize?: number;
+  delayMs?: number;
+  send: (item: T) => Promise<void>;
+  onError?: (item: T, error: unknown) => void;
+};
+
+export async function sendEmailBatch<T>({
+  items,
+  batchSize = 10,
+  delayMs = 1000,
+  send,
+  onError,
+}: SendEmailBatchOptions<T>) {
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+
+    await Promise.all(
+      batch.map(async (item) => {
+        try {
+          await send(item);
+        } catch (error) {
+          if (onError) {
+            onError(item, error);
+          } else {
+            console.error('Error enviando correo:', error);
+          }
+        }
+      })
+    );
+
+    if (i + batchSize < items.length) {
+      await wait(delayMs);
+    }
+  }
+}

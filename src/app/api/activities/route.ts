@@ -4,7 +4,10 @@ import { prisma } from '@/lib/prisma';
 import { activitySchema } from '@/lib/validations';
 import { getCurrentUser } from '@/lib/session';
 import { hasPermission } from '@/lib/permissions';
-import { sendActivityAssignedEmail } from '@/lib/mailer';
+import {
+  sendActivityAssignedEmail,
+  sendEmailBatch,
+} from '@/lib/mailer';
 
 export async function GET() {
   try {
@@ -146,23 +149,27 @@ export async function POST(req: Request) {
         },
       });
 
-      for (const user of assignedUsers) {
-        try {
-          await sendActivityAssignedEmail({
-            to: user.email,
-            fullName: user.fullName,
-            activityTitle: activity.title,
-            description: activity.description,
-            activityDate: new Date(activity.activityDate),
-            location: activity.location,
-          });
-        } catch (mailError) {
-          console.error(
-            `Error enviando correo de actividad a ${user.email}:`,
-            mailError
-          );
-        }
-      }
+      await sendEmailBatch({
+  items: assignedUsers,
+  batchSize: 8,
+  delayMs: 1500,
+  send: async (user) => {
+    await sendActivityAssignedEmail({
+      to: user.email,
+      fullName: user.fullName,
+      activityTitle: activity.title,
+      description: activity.description,
+      activityDate: new Date(activity.activityDate),
+      location: activity.location,
+    });
+  },
+  onError: (user, mailError) => {
+    console.error(
+      `Error enviando correo de actividad a ${user.email}:`,
+      mailError
+    );
+  },
+});
     }
 
     return NextResponse.json(

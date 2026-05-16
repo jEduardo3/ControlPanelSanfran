@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { hashPassword } from '@/lib/auth';
-import { sendTemporaryPasswordEmail } from '@/lib/mailer';
+import { prisma } from '../../../../lib/prisma';
+import { hashPassword } from '../../../../lib/auth';
+import { sendTemporaryPasswordEmail } from '../../../../lib/mailer';
 
 function generateTemporaryPassword() {
   const random = Math.floor(100000 + Math.random() * 900000);

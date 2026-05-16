@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { hashPassword } from '@/lib/auth';
-import { userSchema } from '@/lib/validations';
-import { getCurrentUser } from '@/lib/session';
-import { hasPermission } from '@/lib/permissions';
-import { sendUserCredentialsEmail } from '@/lib/mailer';
+import { prisma } from '../../../lib/prisma';
+import { hashPassword } from '../../../lib/auth';
+import { userSchema } from '../../../lib/validations';
+import { getCurrentUser } from '../../../lib/session';
+import { hasPermission } from '../../../lib/permissions';
+import { sendUserCredentialsEmail } from '../../../lib/mailer';
 export async function GET() {
   try {
     const currentUser = await getCurrentUser();

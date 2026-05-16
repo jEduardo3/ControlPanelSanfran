@@ -1,13 +1,10 @@
 
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { activitySchema } from '@/lib/validations';
-import { getCurrentUser } from '@/lib/session';
-import { hasPermission } from '@/lib/permissions';
-import {
-  sendActivityAssignedEmail,
-  sendEmailBatch,
-} from '@/lib/mailer';
+import { prisma } from '../../../lib/prisma';
+import { activitySchema } from '../../../lib/validations';
+import { getCurrentUser } from '../../../lib/session';
+import { hasPermission } from '../../../lib/permissions';
+import { sendActivityAssignedEmail, sendEmailBatch } from '../../../lib/mailer';
 
 export async function GET() {
   try {

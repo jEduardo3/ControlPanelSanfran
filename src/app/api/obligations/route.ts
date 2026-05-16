@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { obligationSchema } from '@/lib/validations';
-import { getCurrentUser } from '@/lib/session';
-import { hasPermission } from '@/lib/permissions';
-import { sendObligationAssignedEmail } from '@/lib/mailer';
+import { prisma } from '../../../lib/prisma';
+import { obligationSchema } from '../../../lib/validations';
+import { getCurrentUser } from '../../../lib/session';
+import { hasPermission } from '../../../lib/permissions';
+import { sendObligationAssignedEmail } from '../../../lib/mailer';
 
 type ObligationStatus = 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
 

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/session';
-import { hasPermission } from '@/lib/permissions';
-import { sendExcuseReviewedEmail } from '@/lib/mailer';
+import { prisma } from '../../../../lib/prisma';
+import { getCurrentUser } from '../../../../lib/session';
+import { hasPermission } from '../../../../lib/permissions';
+import { sendExcuseReviewedEmail } from '../../../../lib/mailer';
 
 type ReviewStatus = 'APROBADA' | 'RECHAZADA';
 

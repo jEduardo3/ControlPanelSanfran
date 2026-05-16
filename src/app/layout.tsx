@@ -1,6 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import NavbarWrapper from '@/components/navbar-wrapper';
+import NavbarWrapper from '../components/navbar-wrapper';
 
 export const metadata: Metadata = {
   title: 'Hermandad',

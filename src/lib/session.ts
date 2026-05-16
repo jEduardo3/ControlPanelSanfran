@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { verifyToken, type SessionUser } from '@/lib/auth';
+import { verifyToken, type SessionUser } from './auth';
 
 const COOKIE_NAME = 'tesoreria_token';
 

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission } from '../lib/permissions';
 
 type CurrentUser = {
   id: string;

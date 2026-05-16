@@ -1,5 +1,4 @@
-import { prisma } from '@/lib/prisma';
-
+import { prisma } from './prisma';
 export async function getUserWithPermissions(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

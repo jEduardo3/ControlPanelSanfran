@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { prisma } from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/session';
-import { hasPermission } from '@/lib/permissions';
+import { prisma } from '../../../../../lib/prisma';
+import { getCurrentUser } from '../../../../../lib/session';
+import { hasPermission } from '../../../../../lib/permissions';
 
 export const runtime = 'nodejs';
 

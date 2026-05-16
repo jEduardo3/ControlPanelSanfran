@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { hasPermission } from '../../lib/permissions';
 import PageHeader from '../../components/ui/page-header';
 import EmptyState from '../../components/ui/empty-state';
-import StatusBadge from '@/components/ui/status-badge';
+import StatusBadge from '../../components/ui/status-badge';
 
 type CurrentUser = {
   id: string;

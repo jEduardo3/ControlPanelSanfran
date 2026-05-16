@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import PageHeader from '@/components/ui/page-header';
-import EmptyState from '@/components/ui/empty-state';
+import PageHeader from '../../../../components/ui/page-header';
+import EmptyState from '../../../../components/ui/empty-state';
 
 type AttendanceStatus = 'PRESENTE' | 'AUSENTE' | 'EXCUSADO';
 

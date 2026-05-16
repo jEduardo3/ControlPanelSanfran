@@ -1,12 +1,12 @@
 
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/session';
-import { hasPermission } from '@/lib/permissions';
+import { prisma } from '../../../../../lib/prisma';
+import { getCurrentUser } from '../../../../../lib/session';
+import { hasPermission } from '../../../../../lib/permissions';
 import {
   sendAttendanceRegisteredEmail,
   sendEmailBatch,
-} from '@/lib/mailer';
+} from '../../../../../lib/mailer';
 
 type AttendanceStatus = 'PRESENTE' | 'AUSENTE' | 'EXCUSADO';
 

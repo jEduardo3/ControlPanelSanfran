@@ -1,1 +1,1 @@
-{"version":1,"functions":{"/api/excuses":{},"/api/payments/[id]/receipt":{}}}
+{"version":1,"functions":{"/api/payments/[id]/receipt":{},"/api/excuses":{}}}

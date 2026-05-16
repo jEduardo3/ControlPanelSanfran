@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/session';
-import { hasPermission } from '@/lib/permissions';
+import { prisma } from '../../../../lib/prisma';
+import { getCurrentUser } from '../../../../lib/session';
+import { hasPermission } from '../../../../lib/permissions';
 
 type AttendanceStatus = 'PRESENTE' | 'AUSENTE' | 'EXCUSADO';
 

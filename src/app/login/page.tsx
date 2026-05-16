@@ -7,9 +7,9 @@ import { useRouter } from 'next/navigation';
 export default function LoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-
+const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -26,9 +26,9 @@ export default function LoginPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email,
-          password,
-        }),
+        identifier,
+        password,
+}),
       });
 
       const data = await res.json();
@@ -39,7 +39,11 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/dashboard');
+      if (data.user?.mustChangePassword) {
+        router.push('/change-password');
+      } else {
+        router.push('/dashboard');
+      }
       router.refresh();
     } catch (error) {
       console.error(error);
@@ -149,8 +153,7 @@ export default function LoginPage() {
               fontSize: 'clamp(14px, 2.7vw, 18px)',
             }}
           >
-            Accede al sistema interno para consultar actividades, asistencia,
-            pagos, excusas y módulos administrativos según tu perfil.
+            Sistema Interno Hermandad de San Francisco el Grande.
           </p>
         </div>
 
@@ -171,30 +174,71 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <div>
-            <label>Correo electrónico</label>
+            <label>Usuario</label>
             <input
               className="input"
-              type="email"
-              placeholder="correo@ejemplo.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              placeholder="Ej. Agonzales"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
             />
           </div>
 
           <div>
-            <label>Contraseña</label>
-            <input
-              className="input"
-              type="password"
-              placeholder="Ingresa tu contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+  <label>Contraseña</label>
+
+  <div
+    style={{
+      position: 'relative',
+    }}
+  >
+    <input
+      className="input"
+      type={showPassword ? 'text' : 'password'}
+      placeholder="Ingresa tu contraseña"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      style={{
+        paddingRight: '52px',
+      }}
+    />
+
+    <button
+      type="button"
+      onClick={() => setShowPassword((prev) => !prev)}
+      style={{
+        position: 'absolute',
+        right: '12px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        border: 'none',
+        background: 'transparent',
+        cursor: 'pointer',
+        color: '#c4b5fd',
+        fontSize: '18px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {showPassword ? '🙈' : '👁️'}
+    </button>
+  </div>
+</div>
 
           <button className="button" type="submit" disabled={loading}>
-            {loading ? 'Ingresando...' : 'Entrar al sistema'}
+            {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
+          <a
+              href="/forgot-password"
+              style={{
+                textAlign: 'center',
+                opacity: 0.82,
+                marginTop: '8px',
+              }}
+            >
+              ¿Olvidaste tu contraseña?
+            </a>
         </form>
       </section>
     </main>

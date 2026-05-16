@@ -80,7 +80,7 @@ export async function sendPaymentReceiptEmail(params: PaymentEmailParams) {
         <p>Se ha registrado un pago en el sistema de tesorería.</p>
 
         <ul>
-          <li><strong>Obligación:</strong> ${params.obligationTitle}</li>
+          <li><strong>Responsabilidad:</strong> ${params.obligationTitle}</li>
           <li><strong>Monto pagado:</strong> ${formattedAmount}</li>
           <li><strong>Saldo restante:</strong> ${formattedBalance}</li>
           <li><strong>Estado actual:</strong> ${friendlyStatus}</li>
@@ -125,17 +125,17 @@ export async function sendObligationAssignedEmail(
   await transporter.sendMail({
     from: smtpFrom,
     to: params.to,
-    subject: 'Nueva obligación asignada - Sistema de Tesorería',
+    subject: 'Nueva Responsabilidad Asignada',
     html: `
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-        <h2>Nueva obligación asignada</h2>
+        <h2>Nueva Responsabilidad Asignada</h2>
 
         <p>Hola <strong>${params.fullName}</strong>,</p>
 
-        <p>Se te ha asignado una nueva obligación en el sistema de tesorería.</p>
+       <p>Se te ha asignado una nueva responsabilidad dentro de la hermandad.</p>
 
         <ul>
-          <li><strong>Obligación:</strong> ${params.obligationTitle}</li>
+          <li><strong>Responsabilidad:</strong> ${params.obligationTitle}</li>
           <li><strong>Descripción:</strong> ${params.description ?? 'Sin descripción'}</li>
           <li><strong>Monto:</strong> ${formattedAmount}</li>
           <li><strong>Fecha límite:</strong> ${formattedDueDate}</li>
@@ -271,14 +271,14 @@ export async function sendAttendanceRegisteredEmail(
   await transporter.sendMail({
     from: smtpFrom,
     to: params.to,
-    subject: 'Registro de asistencia - Sistema de Hermandad',
+    subject: 'Registro de asistencia a actividad',
     html: `
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
         <h2>Registro de asistencia</h2>
 
         <p>Hola <strong>${params.fullName}</strong>,</p>
 
-        <p>Se ha registrado tu asistencia para una actividad.</p>
+        <p>Se ha registrado tu asistencia para esta actividad.</p>
 
         <ul>
           <li><strong>Actividad:</strong> ${params.activityTitle}</li>
@@ -289,6 +289,78 @@ export async function sendAttendanceRegisteredEmail(
         </ul>
 
         <p>Saludos,<br />Sistema de Hermandad</p>
+      </div>
+    `,
+  });
+}
+type UserCredentialsEmailParams = {
+  to: string;
+  fullName: string;
+  username: string;
+  password: string;
+};
+
+export async function sendUserCredentialsEmail(
+  params: UserCredentialsEmailParams
+) {
+  const transporter = getTransporter();
+
+  await transporter.sendMail({
+    from: smtpFrom,
+    to: params.to,
+    subject: 'Credenciales de acceso al sistema',
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+        <h2>Credenciales de acceso</h2>
+
+        <p>Hola <strong>${params.fullName}</strong>,</p>
+
+        <p>Se ha creado tu usuario para ingresar al sistema interno de la hermandad.</p>
+
+        <ul>
+          <li><strong>Usuario:</strong> ${params.username}</li>
+          <li><strong>Contraseña:</strong> ${params.password}</li>
+        </ul>
+
+        <p>Por favor conserva esta información de forma segura.</p>
+
+        <p>Saludos,<br />Sistema de Hermandad</p>
+      </div>
+    `,
+  });
+}
+type TemporaryPasswordEmailParams = {
+  to: string;
+  fullName: string;
+  username: string;
+  temporaryPassword: string;
+};
+
+export async function sendTemporaryPasswordEmail(
+  params: TemporaryPasswordEmailParams
+) {
+  const transporter = getTransporter();
+
+  await transporter.sendMail({
+    from: smtpFrom,
+    to: params.to,
+    subject: 'Restablece tu contraseña',
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+        <h2>Restablece tu contraseña</h2>
+
+        <p>Hola <strong>${params.fullName}</strong>,</p>
+
+        <p>Se ha generado una contraseña temporal para tu usuario.</p>
+
+        <ul>
+          <li><strong>Usuario:</strong> ${params.username}</li>
+          <li><strong>Contraseña temporal:</strong> ${params.temporaryPassword}</li>
+        </ul>
+
+        <p>Al ingresar al sistema, deberás cambiar esta contraseña por una nueva.</p>
+
+        <p>Saludos,<br />Hermandad de San Francisco el grande</p>
       </div>
     `,
   });

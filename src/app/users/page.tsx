@@ -17,11 +17,13 @@ type User = {
 
 type UserForm = {
   fullName: string;
+  username: string;
   email: string;
   password: string;
   roleCode:
     | 'SUPERADMIN'
     | 'ADMIN_GENERAL'
+    | 'JUNTA'
     | 'TESORERIA'
     | 'SECRETARIA'
     | 'COLABORADOR';
@@ -31,12 +33,13 @@ type EditForm = {
   id: string;
   fullName: string;
   email: string;
-  roleCode:
-    | 'SUPERADMIN'
-    | 'ADMIN_GENERAL'
-    | 'TESORERIA'
-    | 'SECRETARIA'
-    | 'COLABORADOR';
+ roleCode:
+  | 'SUPERADMIN'
+  | 'ADMIN_GENERAL'
+  | 'JUNTA'
+  | 'TESORERIA'
+  | 'SECRETARIA'
+  | 'COLABORADOR';
 };
 
 type CurrentUser = {
@@ -62,11 +65,12 @@ export default function UsersPage() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
 
   const [form, setForm] = useState<UserForm>({
-    fullName: '',
-    email: '',
-    password: '',
-    roleCode: 'COLABORADOR',
-  });
+  fullName: '',
+  username: '',
+  email: '',
+  password: '',
+  roleCode: 'COLABORADOR',
+});
 
   const [editForm, setEditForm] = useState<EditForm>({
     id: '',
@@ -163,10 +167,12 @@ export default function UsersPage() {
 
       setForm({
         fullName: '',
+        username: '',
         email: '',
         password: '',
         roleCode: 'COLABORADOR',
       });
+            
 
       await loadUsers();
     } catch (error) {
@@ -315,6 +321,15 @@ export default function UsersPage() {
                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
               />
             </div>
+            <div>
+            <label>Usuario</label>
+            <input
+              className="input"
+              value={form.username}
+              placeholder="Ej. Jestrada"
+              onChange={(e) => setForm({ ...form, username: e.target.value })}
+            />
+          </div>
 
             <div>
               <label>Correo</label>
@@ -352,6 +367,7 @@ export default function UsersPage() {
                 <option value="TESORERIA">TESORERIA</option>
                 <option value="SECRETARIA">SECRETARIA</option>
                 <option value="COLABORADOR">COLABORADOR</option>
+                <option value="JUNTA">JUNTA</option>
               </select>
             </div>
 
@@ -378,11 +394,11 @@ export default function UsersPage() {
         </div>
 
         {message && (
-          <p style={{ color: '#7ee787', marginBottom: '12px' }}>{message}</p>
+          <p style={{ color: '#0bdf1d', marginBottom: '12px' }}>{message}</p>
         )}
 
         {errorMessage && (
-          <p style={{ color: '#ff7b72', marginBottom: '12px' }}>
+          <p style={{ color: '#f51808', marginBottom: '12px' }}>
             {errorMessage}
           </p>
         )}

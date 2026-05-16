@@ -69,6 +69,22 @@ const roleDefinitions = [
     permissions: permissions.map(([code]) => code),
   },
   {
+    code: SystemRoleCode.JUNTA,
+    name: 'Junta',
+    permissions: [
+      'dashboard.view',
+      'activities.view',
+      'attendance.view',
+      'excuses.view',
+      'excuses.review',
+      'treasury.view',
+      'payments.view',
+      'reports.view',
+      'reports.export',
+    ],
+  },
+  
+  {
     code: SystemRoleCode.TESORERIA,
     name: 'Tesorería',
     permissions: [
@@ -179,45 +195,84 @@ async function main() {
     }
   }
 
-  const superAdminRole = await prisma.role.findUnique({
-    where: { code: SystemRoleCode.SUPERADMIN },
-  });
+ const superAdminRole = await prisma.role.findUnique({
+  where: { code: SystemRoleCode.SUPERADMIN },
+});
 
-  const colaboradorRole = await prisma.role.findUnique({
-    where: { code: SystemRoleCode.COLABORADOR },
-  });
+const colaboradorRole = await prisma.role.findUnique({
+  where: { code: SystemRoleCode.COLABORADOR },
+});
 
-  if (!superAdminRole || !colaboradorRole) {
-    throw new Error('No se pudieron crear los roles base');
-  }
+const juntaRole = await prisma.role.findUnique({
+  where: { code: SystemRoleCode.JUNTA },
+});
 
-  const passwordHash = await bcrypt.hash('123456', 10);
+if (!superAdminRole || !colaboradorRole || !juntaRole) {
+  throw new Error('No se pudieron crear los roles base');
+}
 
-  await prisma.user.upsert({
-    where: { email: 'admin@tesoreria.com' },
-    update: {},
-    create: {
-      fullName: 'Administrador Principal',
-      email: 'admin@tesoreria.com',
-      passwordHash,
-      roleId: superAdminRole.id,
-    },
-  });
+const passwordHash = await bcrypt.hash('123456', 10);
 
-  await prisma.user.upsert({
-    where: { email: 'colaborador@tesoreria.com' },
-    update: {},
-    create: {
-      fullName: 'Usuario Colaborador',
-      email: 'colaborador@tesoreria.com',
-      passwordHash,
-      roleId: colaboradorRole.id,
-    },
-  });
+await prisma.user.upsert({
+  where: { email: 'admin@tesoreria.com' },
+  update: {
+    fullName: 'Administrador Principal',
+    username: 'admin',
+    passwordHash,
+    roleId: superAdminRole.id,
+    isActive: true,
+  },
+  create: {
+    fullName: 'Administrador Principal',
+    username: 'admin',
+    email: 'admin@tesoreria.com',
+    passwordHash,
+    roleId: superAdminRole.id,
+    isActive: true,
+  },
+});
+await prisma.user.upsert({
+  where: { email: 'colaborador@tesoreria.com' },
+  update: {
+    fullName: 'Usuario Colaborador',
+    username: 'colaborador',
+    passwordHash,
+    roleId: colaboradorRole.id,
+    isActive: true,
+  },
+  create: {
+    fullName: 'Usuario Colaborador',
+    username: 'colaborador',
+    email: 'colaborador@tesoreria.com',
+    passwordHash,
+    roleId: colaboradorRole.id,
+    isActive: true,
+  },
+});
 
-  console.log('Seed ejecutado correctamente');
-  console.log('Admin: admin@tesoreria.com / 123456');
-  console.log('Colaborador: colaborador@tesoreria.com / 123456');
+await prisma.user.upsert({
+  where: { email: 'junta@tesoreria.com' },
+  update: {
+    fullName: 'Usuario Junta',
+    username: 'junta',
+    passwordHash,
+    roleId: juntaRole.id,
+    isActive: true,
+  },
+  create: {
+    fullName: 'Usuario Junta',
+    username: 'junta',
+    email: 'junta@tesoreria.com',
+    passwordHash,
+    roleId: juntaRole.id,
+    isActive: true,
+  },
+});
+
+ console.log('Seed ejecutado correctamente');
+console.log('Admin: admin@tesoreria.com / 123456');
+console.log('Colaborador: colaborador@tesoreria.com / 123456');
+console.log('Junta: junta@tesoreria.com / 123456');
 }
 
 main()

@@ -10,6 +10,7 @@ datasource db {
 enum SystemRoleCode {
   SUPERADMIN
   ADMIN_GENERAL
+  JUNTA
   TESORERIA
   SECRETARIA
   COLABORADOR
@@ -58,39 +59,42 @@ enum NotificationStatus {
 model User {
   id                 String   @id @default(uuid())
   fullName           String
+  username           String   @unique
   email              String   @unique
   passwordHash       String
+  mustChangePassword Boolean  @default(false)
   isActive           Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  roleId             String?
-  role               Role?    @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  roleId String?
+  role   Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
 
-  userPermissions    UserPermission[]
+  userPermissions UserPermission[]
 
-  createdActivities  Activity[]            @relation("ActivityCreator")
-  attendances        Attendance[]
-  attendanceMarkedBy Attendance[]          @relation("AttendanceRegisteredBy")
-  excuses            Excuse[]              @relation("ExcuseUser")
-  excusesReviewed    Excuse[]              @relation("ExcuseReviewedBy")
-  createdObligations FinancialObligation[] @relation("ObligationCreator")
-  userObligations    UserObligation[]
-  registeredPayments Payment[]             @relation("PaymentRegisteredBy")
-  notifications      Notification[]
+  createdActivities   Activity[]            @relation("ActivityCreator")
+  attendances         Attendance[]
+  attendanceMarkedBy  Attendance[]          @relation("AttendanceRegisteredBy")
+  excuses             Excuse[]              @relation("ExcuseUser")
+  excusesReviewed     Excuse[]              @relation("ExcuseReviewedBy")
+  createdObligations  FinancialObligation[] @relation("ObligationCreator")
+  userObligations     UserObligation[]
+  registeredPayments  Payment[]             @relation("PaymentRegisteredBy")
+  notifications       Notification[]
   activityAssignments ActivityAssignment[]
+
   @@index([roleId])
 }
 
 model Role {
-  id              String           @id @default(uuid())
-  code            SystemRoleCode   @unique
-  name            String           @unique
-  description     String?
-  isSystem        Boolean          @default(true)
-  isActive        Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id          String         @id @default(uuid())
+  code        SystemRoleCode @unique
+  name        String         @unique
+  description String?
+  isSystem    Boolean        @default(true)
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   users           User[]
   rolePermissions RolePermission[]
@@ -99,28 +103,28 @@ model Role {
 }
 
 model Permission {
-  id               String            @id @default(uuid())
-  code             String            @unique
-  module           PermissionModule
-  action           String
-  description      String?
-  createdAt        DateTime          @default(now())
+  id          String           @id @default(uuid())
+  code        String           @unique
+  module      PermissionModule
+  action      String
+  description String?
+  createdAt   DateTime         @default(now())
 
-  rolePermissions  RolePermission[]
-  userPermissions  UserPermission[]
+  rolePermissions RolePermission[]
+  userPermissions UserPermission[]
 
   @@index([module])
   @@index([action])
 }
 
 model RolePermission {
-  id            String      @id @default(uuid())
-  roleId        String
-  permissionId  String
-  createdAt     DateTime    @default(now())
+  id           String   @id @default(uuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
 
-  role          Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission    Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, permissionId])
   @@index([roleId])
@@ -128,14 +132,14 @@ model RolePermission {
 }
 
 model UserPermission {
-  id            String      @id @default(uuid())
-  userId        String
-  permissionId  String
-  granted       Boolean     @default(true)
-  createdAt     DateTime    @default(now())
+  id           String   @id @default(uuid())
+  userId       String
+  permissionId String
+  granted      Boolean  @default(true)
+  createdAt    DateTime @default(now())
 
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  permission    Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@unique([userId, permissionId])
   @@index([userId])
@@ -162,14 +166,14 @@ model Activity {
 }
 
 model Attendance {
-  id             String   @id @default(uuid())
+  id             String           @id @default(uuid())
   userId         String
   activityId     String
   status         AttendanceStatus
   notes          String?
   registeredById String
-  registeredAt   DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  registeredAt   DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   activity     Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
@@ -182,22 +186,22 @@ model Attendance {
 }
 
 model Excuse {
-  id                  String       @id @default(uuid())
-  activityId          String
-  userId              String
-  reason              String
-  status              ExcuseStatus @default(PENDIENTE)
-  reviewedById        String?
-  reviewedAt          DateTime?
-  createdAt           DateTime     @default(now())
+  id           String       @id @default(uuid())
+  activityId   String
+  userId       String
+  reason       String
+  status       ExcuseStatus @default(PENDIENTE)
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime     @default(now())
 
-  attachmentUrl       String?
-  attachmentName      String?
-  attachmentMimeType  String?
+  attachmentUrl      String?
+  attachmentName     String?
+  attachmentMimeType String?
 
-  activity            Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  user                User     @relation("ExcuseUser", fields: [userId], references: [id], onDelete: Cascade)
-  reviewedBy          User?    @relation("ExcuseReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user       User     @relation("ExcuseUser", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User?    @relation("ExcuseReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@index([activityId])
   @@index([userId])
@@ -205,18 +209,18 @@ model Excuse {
 }
 
 model FinancialObligation {
-  id               String           @id @default(uuid())
-  title            String
-  description      String?
-  amount           Decimal          @db.Decimal(10, 2)
-  dueDate          DateTime
-  isActive         Boolean          @default(true)
-  createdById      String
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  amount      Decimal  @db.Decimal(10, 2)
+  dueDate     DateTime
+  isActive    Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  createdBy        User             @relation("ObligationCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  userObligations  UserObligation[]
+  createdBy       User             @relation("ObligationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  userObligations UserObligation[]
 
   @@index([dueDate])
   @@index([createdById])
@@ -224,17 +228,17 @@ model FinancialObligation {
 }
 
 model UserObligation {
-  id              String           @id @default(uuid())
-  obligationId    String
-  userId          String
-  assignedAmount  Decimal          @db.Decimal(10, 2)
-  balance         Decimal          @db.Decimal(10, 2)
-  status          ObligationStatus @default(PENDIENTE)
-  assignedAt      DateTime         @default(now())
+  id             String           @id @default(uuid())
+  obligationId   String
+  userId         String
+  assignedAmount Decimal          @db.Decimal(10, 2)
+  balance        Decimal          @db.Decimal(10, 2)
+  status         ObligationStatus @default(PENDIENTE)
+  assignedAt     DateTime         @default(now())
 
-  obligation      FinancialObligation @relation(fields: [obligationId], references: [id], onDelete: Cascade)
-  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payments        Payment[]
+  obligation FinancialObligation @relation(fields: [obligationId], references: [id], onDelete: Cascade)
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments   Payment[]
 
   @@unique([obligationId, userId])
   @@index([obligationId])
@@ -243,18 +247,18 @@ model UserObligation {
 }
 
 model Payment {
-  id                String   @id @default(uuid())
-  userObligationId  String
-  amountPaid        Decimal  @db.Decimal(10, 2)
-  paymentDate       DateTime @default(now())
-  paymentMethod     String?
-  receiptUrl        String?
-  registeredById    String
-  notes             String?
-  createdAt         DateTime @default(now())
+  id               String   @id @default(uuid())
+  userObligationId String
+  amountPaid       Decimal  @db.Decimal(10, 2)
+  paymentDate      DateTime @default(now())
+  paymentMethod    String?
+  receiptUrl       String?
+  registeredById   String
+  notes            String?
+  createdAt        DateTime @default(now())
 
-  userObligation    UserObligation @relation(fields: [userObligationId], references: [id], onDelete: Cascade)
-  registeredBy      User           @relation("PaymentRegisteredBy", fields: [registeredById], references: [id], onDelete: Restrict)
+  userObligation UserObligation @relation(fields: [userObligationId], references: [id], onDelete: Cascade)
+  registeredBy   User           @relation("PaymentRegisteredBy", fields: [registeredById], references: [id], onDelete: Restrict)
 
   @@index([userObligationId])
   @@index([registeredById])
@@ -262,20 +266,21 @@ model Payment {
 }
 
 model Notification {
-  id         String             @id @default(uuid())
-  userId     String
-  type       String
-  subject    String
-  message    String
-  sentAt     DateTime?
-  status     NotificationStatus @default(PENDIENTE)
-  createdAt  DateTime           @default(now())
+  id        String             @id @default(uuid())
+  userId    String
+  type      String
+  subject   String
+  message   String
+  sentAt    DateTime?
+  status    NotificationStatus @default(PENDIENTE)
+  createdAt DateTime           @default(now())
 
-  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
 }
+
 model ActivityAssignment {
   id         String   @id @default(uuid())
   activityId String

@@ -4,7 +4,7 @@ import { hashPassword } from '@/lib/auth';
 import { userSchema } from '@/lib/validations';
 import { getCurrentUser } from '@/lib/session';
 import { hasPermission } from '@/lib/permissions';
-
+import { sendUserCredentialsEmail } from '@/lib/mailer';
 export async function GET() {
   try {
     const currentUser = await getCurrentUser();
@@ -102,33 +102,51 @@ export async function POST(req: Request) {
 
     const passwordHash = await hashPassword(parsed.data.password);
 
-    const user = await prisma.user.create({
-      data: {
-        fullName: parsed.data.fullName,
-        email: parsed.data.email,
-        passwordHash,
-        role: {
-          connect: { id: role.id },
-        },
-      },
+const user = await prisma.user.create({
+  data: {
+    fullName: parsed.data.fullName,
+    username: parsed.data.username.trim(),
+    email: parsed.data.email.trim(),
+    passwordHash,
+    mustChangePassword: true,
+    role: {
+      connect: { id: role.id },
+    },
+  },
+  select: {
+    id: true,
+    fullName: true,
+    username: true,
+    email: true,
+    isActive: true,
+    mustChangePassword: true,
+    role: {
       select: {
-        id: true,
-        fullName: true,
-        email: true,
-        isActive: true,
-        role: {
-          select: {
-            code: true,
-            name: true,
-          },
-        },
+        code: true,
+        name: true,
       },
-    });
+    },
+  },
+});
 
-    return NextResponse.json(
-      { message: 'Usuario creado', data: user },
-      { status: 201 }
-    );
+try {
+  await sendUserCredentialsEmail({
+    to: user.email,
+    fullName: user.fullName,
+    username: user.username,
+    password: parsed.data.password,
+  });
+} catch (mailError) {
+  console.error(
+    'Error enviando credenciales:',
+    mailError
+  );
+}
+
+return NextResponse.json(
+  { message: 'Usuario creado', data: user },
+  { status: 201 }
+);
   } catch (error) {
     console.error('POST /api/users error:', error);
     return NextResponse.json(
@@ -326,4 +344,5 @@ export async function PUT(req: Request) {
       { status: 500 }
     );
   }
+  
 }

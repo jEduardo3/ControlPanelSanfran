@@ -4,10 +4,12 @@ import jwt from 'jsonwebtoken';
 export type SessionUser = {
   id: string;
   email: string;
+  username?: string;
   fullName: string;
   roleCode: string | null;
   roleName: string | null;
   permissions: string[];
+  mustChangePassword: boolean;
 };
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';

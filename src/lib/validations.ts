@@ -6,12 +6,14 @@ export const loginSchema = z.object({
 });
 
 export const userSchema = z.object({
-  fullName: z.string().min(3),
-  email: z.string().email(),
-  password: z.string().min(6),
+  fullName: z.string().min(1, 'El nombre es obligatorio'),
+  username: z.string().min(3, 'El usuario debe tener al menos 3 caracteres'),
+  email: z.string().email('Correo inválido'),
+  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
   roleCode: z.enum([
     'SUPERADMIN',
     'ADMIN_GENERAL',
+    'JUNTA',
     'TESORERIA',
     'SECRETARIA',
     'COLABORADOR',

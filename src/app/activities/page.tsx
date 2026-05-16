@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { hasPermission } from '../../lib/permissions';
 import PageHeader from '../../components/ui/page-header';
 import EmptyState from '../../components/ui/empty-state';
-
 type AssignedUser = {
   user: {
     id: string;

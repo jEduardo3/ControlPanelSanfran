@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { hasPermission } from '@/lib/permissions';
-
+import { hasPermission } from '../../lib/permissions';
 type CurrentUser = {
   id: string;
   fullName: string;

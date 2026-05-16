@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import PageHeader from '@/components/ui/page-header';
+import PageHeader from '../../components/ui/page-header';
 
 export default function ChangePasswordPage() {
   const router = useRouter();

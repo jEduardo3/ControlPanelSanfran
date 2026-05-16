@@ -36,21 +36,21 @@
       "static/chunks/fd9d1056-d2e18b0981af8b00.js",
       "static/chunks/117-78e2c40ea830ff81.js",
       "static/chunks/main-app-077e9df0ca41f258.js",
-      "static/chunks/app/attendance/page-998e83468c2886c7.js"
+      "static/chunks/app/attendance/page-e0e2e2e97b98accd.js"
     ],
     "/change-password/page": [
       "static/chunks/webpack-616e068a201ad621.js",
       "static/chunks/fd9d1056-d2e18b0981af8b00.js",
       "static/chunks/117-78e2c40ea830ff81.js",
       "static/chunks/main-app-077e9df0ca41f258.js",
-      "static/chunks/app/change-password/page-da3ed704208ab2e7.js"
+      "static/chunks/app/change-password/page-c7c08c35bb1ffb29.js"
     ],
     "/dashboard/page": [
       "static/chunks/webpack-616e068a201ad621.js",
       "static/chunks/fd9d1056-d2e18b0981af8b00.js",
       "static/chunks/117-78e2c40ea830ff81.js",
       "static/chunks/main-app-077e9df0ca41f258.js",
-      "static/chunks/app/dashboard/page-13bcb025c22942d5.js"
+      "static/chunks/app/dashboard/page-099330adf5316265.js"
     ],
     "/forgot-password/page": [
       "static/chunks/webpack-616e068a201ad621.js",
@@ -59,14 +59,6 @@
       "static/chunks/main-app-077e9df0ca41f258.js",
       "static/chunks/972-cc70c4a71fdf7149.js",
       "static/chunks/app/forgot-password/page-45f8c2e7b62a966c.js"
-    ],
-    "/page": [
-      "static/chunks/webpack-616e068a201ad621.js",
-      "static/chunks/fd9d1056-d2e18b0981af8b00.js",
-      "static/chunks/117-78e2c40ea830ff81.js",
-      "static/chunks/main-app-077e9df0ca41f258.js",
-      "static/chunks/972-cc70c4a71fdf7149.js",
-      "static/chunks/app/page-dd5cdbf350e87d9f.js"
     ],
     "/excuses/page": [
       "static/chunks/webpack-616e068a201ad621.js",
@@ -96,6 +88,14 @@
       "static/chunks/117-78e2c40ea830ff81.js",
       "static/chunks/main-app-077e9df0ca41f258.js",
       "static/chunks/app/reports/page-71518dd55945ea52.js"
+    ],
+    "/page": [
+      "static/chunks/webpack-616e068a201ad621.js",
+      "static/chunks/fd9d1056-d2e18b0981af8b00.js",
+      "static/chunks/117-78e2c40ea830ff81.js",
+      "static/chunks/main-app-077e9df0ca41f258.js",
+      "static/chunks/972-cc70c4a71fdf7149.js",
+      "static/chunks/app/page-dd5cdbf350e87d9f.js"
     ],
     "/treasury/page": [
       "static/chunks/webpack-616e068a201ad621.js",

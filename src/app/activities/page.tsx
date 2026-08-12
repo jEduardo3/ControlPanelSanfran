@@ -388,6 +388,7 @@ export default function ActivitiesPage() {
 
   return (
     <main
+      className="responsive-split"
       style={{
         display: 'grid',
         gridTemplateColumns: canCreateActivities

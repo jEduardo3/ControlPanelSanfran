@@ -474,7 +474,7 @@ export default function TreasuryPage() {
           </p>
         )}
 
-        <div style={{ overflowX: 'auto' }}>
+        <div className="table-scroll" style={{ overflowX: 'auto' }}>
           <table
             className="table"
             style={{ width: '100%', minWidth: '1180px', tableLayout: 'fixed' }}

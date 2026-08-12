@@ -373,6 +373,7 @@ export default function DashboardPage() {
       </section>
 
       <section
+        className="dashboard-split"
         style={{
           display: 'grid',
           gridTemplateColumns: isAdminView ? 'minmax(0, 1.2fr) minmax(0, 0.8fr)' : '1fr',

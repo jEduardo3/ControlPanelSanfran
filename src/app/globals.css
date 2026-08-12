@@ -408,8 +408,24 @@ textarea.input:focus {
 
 .table-wrap {
   overflow-x: auto;
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 16px;
+}
+
+.responsive-split > *,
+.dashboard-split > * {
+  min-width: 0;
 }
 
 .table {
@@ -614,6 +630,11 @@ hr {
 }
 
 @media (max-width: 900px) {
+  .responsive-split,
+  .dashboard-split {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
   .treasury-layout {
     grid-template-columns: minmax(0, 1fr) !important;
   }
@@ -734,8 +755,35 @@ hr {
     padding: 16px;
   }
 
+  h1 {
+    font-size: clamp(1.55rem, 8vw, 2rem);
+  }
+
+  h2 {
+    font-size: clamp(1.25rem, 6vw, 1.55rem);
+  }
+
+  .input,
+  .select,
+  textarea.input {
+    min-width: 0;
+    max-width: 100%;
+    font-size: 16px;
+  }
+
+  .table-wrap,
+  .table-scroll {
+    margin-inline: -4px;
+  }
+
+  .table th,
+  .table td {
+    padding: 11px 10px;
+  }
+
   .page-header {
     align-items: flex-start;
+    flex-direction: column;
   }
 
   .button,

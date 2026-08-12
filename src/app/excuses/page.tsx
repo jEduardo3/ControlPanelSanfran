@@ -384,6 +384,7 @@ export default function ExcusesPage() {
       {errorMessage ? <div className="alert alert-error">{errorMessage}</div> : null}
 
       <section
+        className="responsive-split"
         style={{
           display: 'grid',
           gridTemplateColumns: canCreate ? 'minmax(320px, 420px) minmax(0, 1fr)' : '1fr',

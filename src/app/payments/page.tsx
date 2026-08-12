@@ -351,6 +351,7 @@ export default function PaymentsPage() {
 
   return (
     <main
+      className="responsive-split"
       style={{
         display: 'grid',
         gridTemplateColumns: canCreatePayments

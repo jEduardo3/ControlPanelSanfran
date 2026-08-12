@@ -422,6 +422,7 @@ export default function AttendancePage() {
       </section>
 
       <section
+        className="responsive-split"
         style={{
           display: 'grid',
           gridTemplateColumns: canCreate ? 'minmax(320px, 420px) minmax(0, 1fr)' : '1fr',
@@ -512,7 +513,7 @@ export default function AttendancePage() {
           {message && <p style={{ color: '#7ee787', marginBottom: '12px' }}>{message}</p>}
           {errorMessage && <p style={{ color: '#ff7b72', marginBottom: '12px' }}>{errorMessage}</p>}
 
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-scroll" style={{ overflowX: 'auto' }}>
             <table className="table" style={{ width: '100%', minWidth: '1020px', tableLayout: 'fixed' }}>
               <thead>
                 <tr>

@@ -302,6 +302,7 @@ export default function UsersPage() {
 
   return (
     <main
+      className="responsive-split"
       style={{
         display: 'grid',
         gridTemplateColumns: canCreateUsers ? 'minmax(320px, 420px) minmax(0, 1fr)' : '1fr',
@@ -403,7 +404,7 @@ export default function UsersPage() {
           </p>
         )}
 
-        <div style={{ overflowX: 'auto' }}>
+        <div className="table-scroll" style={{ overflowX: 'auto' }}>
           <table
             className="table"
             style={{ width: '100%', minWidth: '980px', tableLayout: 'fixed' }}

@@ -329,6 +329,18 @@ textarea.input {
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
+input[type='date'].input,
+input[type='datetime-local'].input {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.treasury-layout > *,
+.treasury-layout form > * {
+  min-width: 0;
+}
+
 .input::placeholder,
 textarea.input::placeholder {
   color: rgba(247, 244, 251, 0.42);
@@ -602,6 +614,10 @@ hr {
 }
 
 @media (max-width: 900px) {
+  .treasury-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
   .topbar-main-row {
     width: 100%;
     display: flex;

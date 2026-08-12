@@ -349,6 +349,7 @@ export default function TreasuryPage() {
 
   return (
     <main
+      className="treasury-layout"
       style={{
         display: 'grid',
         gridTemplateColumns: canCreateObligations

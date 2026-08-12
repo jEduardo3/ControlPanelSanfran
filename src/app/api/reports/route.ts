@@ -22,6 +22,10 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const selectedUserId = searchParams.get('userId');
+    const format = searchParams.get('format');
+    if (format === 'csv' && !hasPermission(currentUser.permissions, 'reports.export')) {
+      return NextResponse.json({ error: 'Sin permisos para exportar reportes' }, { status: 403 });
+    }
 
     const userFilter = selectedUserId ? { id: selectedUserId } : {};
     const attendanceFilter = selectedUserId ? { userId: selectedUserId } : {};
@@ -34,18 +38,26 @@ export async function GET(req: Request) {
           },
         }
       : {};
+    await prisma.userObligation.updateMany({
+      where: {
+        balance: { gt: 0 },
+        status: { in: ['PENDIENTE', 'PARCIAL'] },
+        obligation: { dueDate: { lt: new Date() } },
+      },
+      data: { status: 'VENCIDO' },
+    });
 
     const [
       selectedUser,
       usersCount,
       activitiesCount,
-      attendanceCount,
       excusesCount,
       pendingExcusesCount,
       obligationsCount,
       pendingObligationsCount,
       partialObligationsCount,
       paidObligationsCount,
+      overdueObligationsCount,
       paymentsCount,
       payments,
       attendance,
@@ -72,10 +84,6 @@ export async function GET(req: Request) {
       }),
 
       prisma.activity.count(),
-
-      prisma.attendance.count({
-        where: attendanceFilter,
-      }),
 
       prisma.excuse.count({
         where: excusesFilter,
@@ -110,6 +118,13 @@ export async function GET(req: Request) {
         where: {
           ...obligationsFilter,
           status: 'PAGADO',
+        },
+      }),
+
+      prisma.userObligation.count({
+        where: {
+          ...obligationsFilter,
+          status: 'VENCIDO',
         },
       }),
 
@@ -163,6 +178,36 @@ export async function GET(req: Request) {
           )
         : 0;
 
+    if (format === 'csv') {
+      const rows = [
+        ['Métrica', 'Valor'],
+        ['Usuario', selectedUser?.fullName ?? 'Todos'],
+        ['Usuarios', usersCount],
+        ['Actividades', activitiesCount],
+        ['Asistencias', attendanceSummary.total],
+        ['Presentes', attendanceSummary.presentes],
+        ['Ausentes', attendanceSummary.ausentes],
+        ['Excusados', attendanceSummary.excusados],
+        ['Porcentaje de asistencia', attendancePercentage],
+        ['Excusas pendientes', pendingExcusesCount],
+        ['Obligaciones pendientes', pendingObligationsCount],
+        ['Obligaciones parciales', partialObligationsCount],
+        ['Obligaciones pagadas', paidObligationsCount],
+        ['Obligaciones vencidas', overdueObligationsCount],
+        ['Pagos registrados', paymentsCount],
+        ['Total recaudado', totalCollected.toFixed(2)],
+      ];
+      const csv = rows
+        .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(','))
+        .join('\r\n');
+      return new NextResponse(`\uFEFF${csv}`, {
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': 'attachment; filename="reporte-tesoreria.csv"',
+        },
+      });
+    }
+
     return NextResponse.json({
       data: {
         selectedUser,
@@ -185,6 +230,7 @@ export async function GET(req: Request) {
           pending: pendingObligationsCount,
           partial: partialObligationsCount,
           paid: paidObligationsCount,
+          overdue: overdueObligationsCount,
         },
         payments: {
           total: paymentsCount,
@@ -195,8 +241,10 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error('GET /api/reports error:', error);
     return NextResponse.json(
-      { error: 'Error obteniendo reportes', details: String(error) },
+      { error: 'Error obteniendo reportes' },
       { status: 500 }
     );
   }
 }
+
+export const dynamic = 'force-dynamic';

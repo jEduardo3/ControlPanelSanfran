@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { hasPermission } from '../../lib/permissions';
 import PageHeader from '../../components/ui/page-header';
+import { GUATEMALA_TIME_ZONE, toGuatemalaDateTimeLocalValue } from '../../lib/date-time';
 import EmptyState from '../../components/ui/empty-state';
 type AssignedUser = {
   user: {
@@ -61,17 +62,6 @@ type EditForm = {
   location: string;
   userIds: string[];
 };
-
-function toDateTimeLocalValue(dateString: string) {
-  const date = new Date(dateString);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
 
 export default function ActivitiesPage() {
   const router = useRouter();
@@ -288,7 +278,7 @@ export default function ActivitiesPage() {
       id: activity.id,
       title: activity.title,
       description: activity.description ?? '',
-      activityDate: toDateTimeLocalValue(activity.activityDate),
+      activityDate: toGuatemalaDateTimeLocalValue(activity.activityDate),
       location: activity.location ?? '',
       userIds: activity.assignedUsers?.map((item) => item.user.id) ?? [],
     });
@@ -595,7 +585,9 @@ export default function ActivitiesPage() {
                             }
                           />
                         ) : (
-                          new Date(activity.activityDate).toLocaleString('es-GT')
+                          new Date(activity.activityDate).toLocaleString('es-GT', {
+                            timeZone: GUATEMALA_TIME_ZONE,
+                          })
                         )}
                       </td>
 

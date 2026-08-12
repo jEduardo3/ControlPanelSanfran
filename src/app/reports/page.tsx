@@ -52,6 +52,7 @@ type ReportsData = {
     pending: number;
     partial: number;
     paid: number;
+    overdue: number;
   };
   payments: {
     total: number;
@@ -198,6 +199,15 @@ export default function ReportsPage() {
               </option>
             ))}
           </select>
+          {hasPermission(currentUser.permissions, 'reports.export') && (
+            <a
+              className="button"
+              href={`/api/reports?format=csv${selectedUserId ? `&userId=${encodeURIComponent(selectedUserId)}` : ''}`}
+              style={{ display: 'inline-block', marginTop: '12px', textDecoration: 'none' }}
+            >
+              Exportar CSV
+            </a>
+          )}
         </div>
 
         {reports.selectedUser && (
@@ -276,6 +286,7 @@ export default function ReportsPage() {
           <p><strong>Pendientes:</strong> {reports.obligations.pending}</p>
           <p><strong>Parciales:</strong> {reports.obligations.partial}</p>
           <p><strong>Pagadas:</strong> {reports.obligations.paid}</p>
+          <p><strong>Vencidas:</strong> {reports.obligations.overdue}</p>
         </div>
       </section>
     </main>

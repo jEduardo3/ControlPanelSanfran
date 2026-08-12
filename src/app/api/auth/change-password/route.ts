@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 import { comparePassword, hashPassword } from '../../../../lib/auth';
-import { getCurrentUser } from '../../../../lib/session';
+import { getCurrentUser, getSessionCookieName } from '../../../../lib/session';
 
 export async function POST(req: Request) {
   try {
-    const currentUser = await getCurrentUser();
+    const currentUser = await getCurrentUser({ allowPasswordChange: true });
 
     if (!currentUser) {
       return NextResponse.json(
@@ -27,9 +27,9 @@ export async function POST(req: Request) {
       );
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       return NextResponse.json(
-        { error: 'La nueva contraseña debe tener al menos 6 caracteres' },
+        { error: 'La nueva contraseña debe tener al menos 8 caracteres' },
         { status: 400 }
       );
     }
@@ -71,18 +71,29 @@ export async function POST(req: Request) {
       data: {
         passwordHash,
         mustChangePassword: false,
+        sessionVersion: { increment: 1 },
       },
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       message: 'Contraseña actualizada correctamente',
     });
+    response.cookies.set(getSessionCookieName(), '', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 0,
+    });
+    return response;
   } catch (error) {
     console.error('POST /api/auth/change-password error:', error);
 
     return NextResponse.json(
-      { error: 'Error cambiando contraseña', details: String(error) },
+      { error: 'Error cambiando contraseña' },
       { status: 500 }
     );
   }
 }
+
+export const dynamic = 'force-dynamic';

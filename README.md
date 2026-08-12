@@ -1,132 +1,61 @@
-# Sistema de Tesorería - Proyecto demo
+# Sistema de Tesorería
 
-Proyecto base en **Next.js + Prisma + PostgreSQL** para una tarea académica.
-
-## Incluye
-- Login demo con JWT
-- CRUD de usuarios
-- CRUD de actividades
-- Registro de asistencia por API
-- Creación de obligaciones financieras
-- Registro de pagos
-- Envío de excusas por API
-- Dashboard con datos reales de la base
+Aplicación interna para administrar usuarios, actividades, asistencia, excusas, obligaciones financieras, pagos y reportes de una hermandad.
 
 ## Tecnologías
-- Next.js 14
-- React 18
-- TypeScript
-- Prisma ORM
-- PostgreSQL
-- Docker Compose
 
-## 1. Requisitos
-- Node.js 20+
-- npm 10+
-- Docker Desktop
+- Next.js 14, React 18 y TypeScript
+- Prisma ORM y PostgreSQL
+- Autenticación mediante JWT en cookie HTTP-only
+- Nodemailer para notificaciones
+- `pdf-lib` para comprobantes de pago
 
-## 2. Clonar o descomprimir el proyecto
-Si lo recibes zip, descomprímelo y entra a la carpeta.
+## Preparación local
 
-```bash
-cd tesoreria-system
-```
-
-## 3. Crear variables de entorno
-Copia el archivo de ejemplo:
-
-```bash
-cp .env.example .env
-```
-
-Si estás en Windows PowerShell:
-
-```powershell
-copy .env.example .env
-```
-
-## 4. Levantar PostgreSQL con Docker
-
-```bash
-docker compose up -d
-```
-
-Verifica que el contenedor quedó arriba:
-
-```bash
-docker ps
-```
-
-Debe aparecer `tesoreria_postgres`.
-
-## 5. Instalar dependencias
+1. Instala Node.js 20+ y npm 10+.
+2. Copia `.env.example` como `.env` y reemplaza todos los secretos.
+3. Levanta PostgreSQL con `docker compose up -d`, o configura otra base PostgreSQL.
+4. Ejecuta:
 
 ```bash
 npm install
-```
-
-## 6. Generar cliente Prisma
-
-```bash
-npm run prisma:generate
-```
-
-## 7. Crear migración inicial
-
-```bash
-npx prisma migrate dev --name init
-```
-
-## 8. Cargar datos demo
-
-```bash
+npx prisma migrate deploy
 npm run seed
-```
-
-Usuarios de prueba:
-- Admin: `admin@tesoreria.com` / `Admin123*`
-- Colaborador: `colaborador@tesoreria.com` / `Colab123*`
-
-## 9. Levantar el proyecto
-
-```bash
 npm run dev
 ```
 
-Abrir en el navegador:
+`SEED_PASSWORD` debe tener al menos 12 caracteres. El seed crea las cuentas `admin@tesoreria.com`, `colaborador@tesoreria.com` y `junta@tesoreria.com` usando esa contraseña y nunca la imprime.
 
-```text
-http://localhost:3000
+## Variables de entorno
+
+- `DATABASE_URL`: conexión PostgreSQL.
+- `JWT_SECRET`: secreto aleatorio de al menos 24 caracteres (se recomiendan 32 o más).
+- `APP_NAME`: nombre visible de la aplicación.
+- `APP_BASE_URL`: URL pública usada en los correos.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`: configuración de correo.
+- `SEED_PASSWORD`: contraseña inicial utilizada solamente por el seed.
+
+## Roles y permisos
+
+El sistema incluye los roles `SUPERADMIN`, `ADMIN_GENERAL`, `JUNTA`, `TESORERIA`, `SECRETARIA` y `COLABORADOR`. Las API verifican permisos granulares y distinguen entre acceso general y acceso a información propia.
+
+Los cambios de rol, permisos, contraseña o estado de una cuenta invalidan o actualizan inmediatamente el acceso de sus sesiones.
+
+## Archivos de excusas
+
+Los archivos nuevos se guardan en `data/uploads/excuses`, que no debe versionarse ni exponerse como contenido estático. Las descargas pasan por una ruta autenticada. En producción se recomienda montar almacenamiento persistente o sustituirlo por almacenamiento privado compatible con S3.
+
+Antes de actualizar una instalación que anteriormente guardaba archivos bajo `public/uploads/excuses`, mueve esos archivos a `data/uploads/excuses`. Las URL históricas siguen funcionando mediante una ruta autenticada.
+
+## Comandos de verificación
+
+```bash
+npm test
+npm run lint
+npm run typecheck
+npm run build
 ```
 
-## 10. Rutas principales
-- `/` Inicio
-- `/login` Login demo
-- `/dashboard` Dashboard
-- `/users` Gestión de usuarios
-- `/activities` Gestión de actividades
-- `/treasury` Gestión de obligaciones
+## Migraciones
 
-## 11. Endpoints API
-- `POST /api/auth/login`
-- `GET/POST /api/users`
-- `GET/POST /api/activities`
-- `POST /api/attendance/register`
-- `GET/POST /api/obligations`
-- `GET/POST /api/payments`
-- `GET/POST /api/excuses`
-
-## 12. Cómo presentarlo
-Puedes explicar así:
-1. Se levantó PostgreSQL con Docker.
-2. Se modeló la base con Prisma.
-3. Se creó un sistema con roles ADMIN y COLABORADOR.
-4. El admin puede crear usuarios, actividades y obligaciones.
-5. El sistema registra pagos y asistencia.
-6. El colaborador puede consultar información y enviar excusas.
-
-## 13. Notas
-- Es un MVP funcional pensado para entregar tarea.
-- La autenticación está simplificada con JWT devuelto por la API.
-- No incluye protección completa por middleware de sesión en frontend.
-- Se puede ampliar con reportes PDF, correos y permisos más estrictos.
+Las instalaciones nuevas deben usar `npx prisma migrate deploy` y después ejecutar el seed. Si una base existente fue modificada previamente con `prisma db push`, compara primero su estructura con `prisma migrate diff`; no marques ni ejecutes migraciones a ciegas sobre producción.

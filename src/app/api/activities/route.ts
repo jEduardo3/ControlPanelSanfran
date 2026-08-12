@@ -5,6 +5,7 @@ import { activitySchema } from '../../../lib/validations';
 import { getCurrentUser } from '../../../lib/session';
 import { hasPermission } from '../../../lib/permissions';
 import { sendActivityAssignedEmail, sendEmailBatch } from '../../../lib/mailer';
+import { parseGuatemalaDateTime } from '../../../lib/date-time';
 
 export async function GET() {
   try {
@@ -64,8 +65,7 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        error: 'Error obteniendo actividades',
-        details: String(error),
+        error: 'Error obteniendo actividades'
       },
       { status: 500 }
     );
@@ -104,24 +104,35 @@ export async function POST(req: Request) {
       );
     }
 
-    const userIds = Array.isArray(body.userIds)
-      ? body.userIds.filter((id: unknown) => typeof id === 'string')
+    const userIds: string[] = Array.isArray(body.userIds)
+      ? (body.userIds as unknown[]).filter((id): id is string => typeof id === 'string')
       : [];
+    const uniqueUserIds = [...new Set(userIds)];
+    const validUsers = await prisma.user.findMany({
+      where: { id: { in: uniqueUserIds }, isActive: true },
+      select: { id: true },
+    });
+    if (validUsers.length !== uniqueUserIds.length) {
+      return NextResponse.json(
+        { error: 'Uno o más usuarios no existen o están inactivos' },
+        { status: 400 }
+      );
+    }
 
     const activity = await prisma.$transaction(async (tx) => {
       const created = await tx.activity.create({
         data: {
           title: parsed.data.title,
           description: parsed.data.description,
-          activityDate: new Date(parsed.data.activityDate),
+          activityDate: parseGuatemalaDateTime(parsed.data.activityDate),
           location: parsed.data.location,
           createdById: currentUser.id,
         },
       });
 
-      if (userIds.length > 0) {
+      if (uniqueUserIds.length > 0) {
         await tx.activityAssignment.createMany({
-          data: userIds.map((userId: string) => ({
+          data: uniqueUserIds.map((userId: string) => ({
             activityId: created.id,
             userId,
           })),
@@ -132,11 +143,11 @@ export async function POST(req: Request) {
       return created;
     });
 
-    if (userIds.length > 0) {
+    if (uniqueUserIds.length > 0) {
       const assignedUsers = await prisma.user.findMany({
         where: {
           id: {
-            in: userIds,
+            in: uniqueUserIds,
           },
           isActive: true,
         },
@@ -181,8 +192,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
-        error: 'Error creando actividad',
-        details: String(error),
+        error: 'Error creando actividad'
       },
       { status: 500 }
     );
@@ -233,6 +243,7 @@ export async function PATCH(req: Request) {
 
     const existing = await prisma.activity.findUnique({
       where: { id },
+      include: { assignedUsers: { select: { userId: true } } },
     });
 
     if (!existing) {
@@ -243,6 +254,19 @@ export async function PATCH(req: Request) {
         { status: 404 }
       );
     }
+    const nextUserIds = Array.isArray(userIds) ? [...new Set(userIds)] : null;
+    if (nextUserIds) {
+      const validUsers = await prisma.user.findMany({
+        where: { id: { in: nextUserIds }, isActive: true },
+        select: { id: true },
+      });
+      if (validUsers.length !== nextUserIds.length) {
+        return NextResponse.json(
+          { error: 'Uno o más usuarios no existen o están inactivos' },
+          { status: 400 }
+        );
+      }
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.activity.update({
@@ -250,21 +274,21 @@ export async function PATCH(req: Request) {
         data: {
           title,
           description: description ?? '',
-          activityDate: new Date(activityDate),
+          activityDate: parseGuatemalaDateTime(activityDate),
           location: location ?? '',
         },
       });
 
-      if (Array.isArray(userIds)) {
+      if (nextUserIds) {
         await tx.activityAssignment.deleteMany({
           where: {
             activityId: id,
           },
         });
 
-        if (userIds.length > 0) {
+        if (nextUserIds.length > 0) {
           await tx.activityAssignment.createMany({
-            data: userIds.map((userId) => ({
+            data: nextUserIds.map((userId) => ({
               activityId: id,
               userId,
             })),
@@ -274,6 +298,29 @@ export async function PATCH(req: Request) {
       }
     });
 
+    if (nextUserIds) {
+      const previousIds = new Set(existing.assignedUsers.map((item) => item.userId));
+      const addedIds = nextUserIds.filter((userId) => !previousIds.has(userId));
+      const addedUsers = await prisma.user.findMany({
+        where: { id: { in: addedIds }, isActive: true },
+        select: { fullName: true, email: true },
+      });
+      await sendEmailBatch({
+        items: addedUsers,
+        batchSize: 8,
+        delayMs: 1500,
+        send: (user) => sendActivityAssignedEmail({
+          to: user.email,
+          fullName: user.fullName,
+          activityTitle: title,
+          description,
+          activityDate: parseGuatemalaDateTime(activityDate),
+          location,
+        }),
+        onError: (_user, error) => console.error('Error notificando actividad actualizada:', error),
+      });
+    }
+
     return NextResponse.json({
       message: 'Actividad actualizada correctamente',
     });
@@ -282,8 +329,7 @@ export async function PATCH(req: Request) {
 
     return NextResponse.json(
       {
-        error: 'Error actualizando actividad',
-        details: String(error),
+        error: 'Error actualizando actividad'
       },
       { status: 500 }
     );
@@ -342,10 +388,11 @@ export async function DELETE(req: Request) {
 
     return NextResponse.json(
       {
-        error: 'Error eliminando actividad',
-        details: String(error),
+        error: 'Error eliminando actividad'
       },
       { status: 500 }
     );
   }
 }
+
+export const dynamic = 'force-dynamic';

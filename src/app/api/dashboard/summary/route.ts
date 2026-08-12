@@ -29,6 +29,14 @@ export async function GET() {
     const now = new Date();
     const next7Days = new Date();
     next7Days.setDate(now.getDate() + 7);
+    await prisma.userObligation.updateMany({
+      where: {
+        balance: { gt: 0 },
+        status: { in: ['PENDIENTE', 'PARCIAL'] },
+        obligation: { dueDate: { lt: now } },
+      },
+      data: { status: 'VENCIDO' },
+    });
 
     const [
       activeUsers,
@@ -46,12 +54,12 @@ export async function GET() {
       attendanceRecords,
     ] = await Promise.all([
       prisma.user.count({
-        where: {
-          isActive: true,
-        },
+        where: isOwnOnly ? { id: currentUser.id, isActive: true } : { isActive: true },
       }),
 
-      prisma.activity.count(),
+      prisma.activity.count({
+        where: isOwnOnly ? { assignedUsers: { some: { userId: currentUser.id } } } : {},
+      }),
 
       prisma.excuse.count({
         where: isOwnOnly
@@ -149,6 +157,7 @@ export async function GET() {
       }),
 
       prisma.activity.findMany({
+        where: isOwnOnly ? { assignedUsers: { some: { userId: currentUser.id } } } : {},
         orderBy: { activityDate: 'desc' },
         take: 5,
         select: {
@@ -163,7 +172,7 @@ export async function GET() {
           ? {
               userId: currentUser.id,
               status: {
-                in: ['PENDIENTE', 'PARCIAL'],
+                in: ['PENDIENTE', 'PARCIAL', 'VENCIDO'],
               },
               obligation: {
                 dueDate: {
@@ -173,7 +182,7 @@ export async function GET() {
             }
           : {
               status: {
-                in: ['PENDIENTE', 'PARCIAL'],
+                in: ['PENDIENTE', 'PARCIAL', 'VENCIDO'],
               },
               obligation: {
                 dueDate: {
@@ -268,8 +277,10 @@ export async function GET() {
   } catch (error) {
     console.error('GET /api/dashboard/summary error:', error);
     return NextResponse.json(
-      { error: 'Error obteniendo dashboard', details: String(error) },
+      { error: 'Error obteniendo dashboard' },
       { status: 500 }
     );
   }
 }
+
+export const dynamic = 'force-dynamic';

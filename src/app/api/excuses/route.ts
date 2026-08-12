@@ -16,6 +16,18 @@ const ALLOWED_TYPES = [
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+function matchesDeclaredType(buffer: Buffer, mimeType: string) {
+  if (mimeType === 'application/pdf') return buffer.subarray(0, 5).toString() === '%PDF-';
+  if (mimeType === 'image/jpeg') return buffer[0] === 0xff && buffer[1] === 0xd8;
+  if (mimeType === 'image/png') {
+    return buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  }
+  if (mimeType === 'image/webp') {
+    return buffer.subarray(0, 4).toString() === 'RIFF' && buffer.subarray(8, 12).toString() === 'WEBP';
+  }
+  return false;
+}
+
 async function saveAttachment(file: File, currentUserId: string) {
   if (!ALLOWED_TYPES.includes(file.type)) {
     throw new Error('Tipo de archivo no permitido. Usa PDF, JPG, PNG o WEBP.');
@@ -27,6 +39,9 @@ async function saveAttachment(file: File, currentUserId: string) {
 
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
+  if (!matchesDeclaredType(buffer, file.type)) {
+    throw new Error('El contenido del archivo no coincide con su tipo.');
+  }
 
   const safeName = file.name
     .replace(/\s+/g, '_')
@@ -34,14 +49,14 @@ async function saveAttachment(file: File, currentUserId: string) {
 
   const uniqueName = `${Date.now()}-${currentUserId}-${safeName}`;
 
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'excuses');
+  const uploadDir = path.join(process.cwd(), 'data', 'uploads', 'excuses');
   await fs.mkdir(uploadDir, { recursive: true });
 
   const filePath = path.join(uploadDir, uniqueName);
   await fs.writeFile(filePath, buffer);
 
   return {
-    attachmentUrl: `/uploads/excuses/${uniqueName}`,
+    attachmentUrl: `/api/excuses/attachment?file=${encodeURIComponent(uniqueName)}`,
     attachmentName: file.name,
     attachmentMimeType: file.type,
   };
@@ -50,8 +65,14 @@ async function saveAttachment(file: File, currentUserId: string) {
 async function deleteExistingAttachment(attachmentUrl?: string | null) {
   if (!attachmentUrl) return;
 
-  const cleanUrl = attachmentUrl.replace(/^\/+/, '');
-  const fullPath = path.join(process.cwd(), 'public', cleanUrl);
+  const fileName = attachmentUrl.startsWith('/api/excuses/attachment')
+    ? new URL(attachmentUrl, 'http://localhost').searchParams.get('file')
+    : path.basename(attachmentUrl);
+  if (!fileName || path.basename(fileName) !== fileName) return;
+  const baseDir = attachmentUrl.startsWith('/api/excuses/attachment')
+    ? path.join(process.cwd(), 'data', 'uploads', 'excuses')
+    : path.join(process.cwd(), 'public', 'uploads', 'excuses');
+  const fullPath = path.join(baseDir, fileName);
 
   try {
     await fs.unlink(fullPath);
@@ -115,8 +136,7 @@ export async function GET() {
     console.error('GET /api/excuses error:', error);
     return NextResponse.json(
       {
-        error: 'Error obteniendo excusas',
-        details: String(error),
+        error: 'Error obteniendo excusas'
       },
       { status: 500 }
     );
@@ -144,9 +164,9 @@ export async function POST(req: Request) {
     const reason = String(formData.get('reason') ?? '').trim();
     const file = formData.get('attachment');
 
-    if (!activityId || !reason) {
+    if (!activityId || reason.length < 5) {
       return NextResponse.json(
-        { error: 'Actividad y justificación son obligatorias' },
+        { error: 'La actividad y una justificación de al menos 5 caracteres son obligatorias' },
         { status: 400 }
       );
     }
@@ -156,6 +176,10 @@ export async function POST(req: Request) {
       select: {
         id: true,
         activityDate: true,
+        assignedUsers: {
+          where: { userId: currentUser.id },
+          select: { id: true },
+        },
       },
     });
 
@@ -163,6 +187,18 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: 'Actividad no encontrada' },
         { status: 404 }
+      );
+    }
+    if (activity.activityDate.getTime() <= Date.now()) {
+      return NextResponse.json(
+        { error: 'No se puede enviar una excusa para una actividad pasada' },
+        { status: 409 }
+      );
+    }
+    if (activity.assignedUsers.length === 0) {
+      return NextResponse.json(
+        { error: 'No estás asignado a esta actividad' },
+        { status: 403 }
       );
     }
 
@@ -233,8 +269,7 @@ export async function POST(req: Request) {
     console.error('POST /api/excuses error:', error);
     return NextResponse.json(
       {
-        error: 'Error creando excusa',
-        details: String(error),
+        error: 'Error creando excusa'
       },
       { status: 500 }
     );
@@ -435,8 +470,7 @@ export async function PATCH(req: Request) {
     console.error('PATCH /api/excuses error:', error);
     return NextResponse.json(
       {
-        error: 'Error actualizando excusa',
-        details: String(error),
+        error: 'Error actualizando excusa'
       },
       { status: 500 }
     );
@@ -498,10 +532,11 @@ export async function DELETE(req: Request) {
     console.error('DELETE /api/excuses error:', error);
     return NextResponse.json(
       {
-        error: 'Error eliminando excusa',
-        details: String(error),
+        error: 'Error eliminando excusa'
       },
       { status: 500 }
     );
   }
 }
+
+export const dynamic = 'force-dynamic';

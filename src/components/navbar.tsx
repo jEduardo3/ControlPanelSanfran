@@ -19,6 +19,7 @@ export default function Navbar() {
   const router = useRouter();
 
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   async function loadMe() {
     try {
@@ -41,8 +42,18 @@ export default function Navbar() {
   }
 
   useEffect(() => {
+    setMenuOpen(false);
     void loadMe();
   }, [pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [menuOpen]);
 
   async function logout() {
     try {
@@ -105,7 +116,8 @@ export default function Navbar() {
   return (
     <header className="topbar">
       <div className="topbar-inner">
-        <Link href={isLoggedIn ? '/dashboard' : '/login'} className="brand">
+        <div className="topbar-main-row">
+          <Link href={isLoggedIn ? '/dashboard' : '/login'} className="brand">
           <div className="brand-logo-wrap">
             <Image
               src="/branding/logo.png"
@@ -135,11 +147,30 @@ export default function Navbar() {
               priority
             />
           </div>
-        </Link>
+          </Link>
+
+          {isLoggedIn ? (
+            <button
+              type="button"
+              className="menu-toggle"
+              aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+              aria-expanded={menuOpen}
+              aria-controls="main-navigation"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <span className="menu-toggle-icon" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+              <span>{menuOpen ? 'Cerrar' : 'Menú'}</span>
+            </button>
+          ) : null}
+        </div>
 
         {isLoggedIn ? (
-          <div className="topbar-right">
-            <nav className="nav-links">
+          <div className={`topbar-right ${menuOpen ? 'menu-open' : ''}`}>
+            <nav className="nav-links" id="main-navigation" aria-label="Navegación principal">
               {navItems.map((item) => {
                 const active = pathname === item.href;
 
@@ -148,6 +179,7 @@ export default function Navbar() {
                     key={item.href}
                     href={item.href}
                     className={`nav-link ${active ? 'active' : ''}`}
+                    onClick={() => setMenuOpen(false)}
                   >
                     {item.label}
                   </Link>

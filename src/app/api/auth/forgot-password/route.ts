@@ -2,14 +2,22 @@ import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 import { hashPassword } from '../../../../lib/auth';
 import { sendTemporaryPasswordEmail } from '../../../../lib/mailer';
+import { randomInt } from 'crypto';
+import { consumeRateLimit, requestIp } from '../../../../lib/rate-limit';
 
 function generateTemporaryPassword() {
-  const random = Math.floor(100000 + Math.random() * 900000);
+  const random = randomInt(100000, 1000000);
   return `Hmdad-${random}`;
 }
 
 export async function POST(req: Request) {
   try {
+    if (!consumeRateLimit(`password-reset:${requestIp(req)}`, 5, 60 * 60 * 1000)) {
+      return NextResponse.json(
+        { error: 'Demasiadas solicitudes. Intenta nuevamente más tarde.' },
+        { status: 429 }
+      );
+    }
     const body = await req.json();
     const email = String(body.email ?? '').trim().toLowerCase();
 
@@ -30,23 +38,20 @@ export async function POST(req: Request) {
       },
     });
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'No existe un usuario activo con ese correo' },
-        { status: 404 }
-      );
+    const genericResponse = NextResponse.json({
+      message: 'Si existe una cuenta activa, recibirá instrucciones por correo.',
+    });
+    if (!user) return genericResponse;
+
+    if (
+      user.passwordResetAt &&
+      Date.now() - user.passwordResetAt.getTime() < 15 * 60 * 1000
+    ) {
+      return genericResponse;
     }
 
     const temporaryPassword = generateTemporaryPassword();
     const passwordHash = await hashPassword(temporaryPassword);
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        passwordHash,
-        mustChangePassword: true,
-      },
-    });
 
     await sendTemporaryPasswordEmail({
       to: user.email,
@@ -55,14 +60,24 @@ export async function POST(req: Request) {
       temporaryPassword,
     });
 
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        mustChangePassword: true,
+        passwordResetAt: new Date(),
+        sessionVersion: { increment: 1 },
+      },
+    });
+
     return NextResponse.json({
-      message: 'Se ha enviado una contraseña temporal a tu correo.',
+      message: 'Si existe una cuenta activa, recibirá instrucciones por correo.',
     });
   } catch (error) {
     console.error('POST /api/auth/forgot-password error:', error);
 
     return NextResponse.json(
-      { error: 'Error restableciendo contraseña', details: String(error) },
+      { error: 'Error restableciendo contraseña' },
       { status: 500 }
     );
   }

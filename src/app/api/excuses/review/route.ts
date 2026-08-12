@@ -74,14 +74,15 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const updated = await prisma.excuse.update({
-      where: { id: excuseId },
-      data: {
-        status,
-        reviewedById: currentUser.id,
-        reviewedAt: new Date(),
-      },
-      include: {
+    const updated = await prisma.$transaction(async (tx) => {
+      const result = await tx.excuse.update({
+        where: { id: excuseId },
+        data: {
+          status,
+          reviewedById: currentUser.id,
+          reviewedAt: new Date(),
+        },
+        include: {
         user: {
           select: {
             id: true,
@@ -103,7 +104,40 @@ export async function PATCH(req: Request) {
             email: true,
           },
         },
-      },
+        },
+      });
+
+      if (status === 'APROBADA') {
+        await tx.attendance.upsert({
+          where: {
+            userId_activityId: {
+              userId: existing.userId,
+              activityId: existing.activityId,
+            },
+          },
+          create: {
+            userId: existing.userId,
+            activityId: existing.activityId,
+            status: 'EXCUSADO',
+            notes: 'Excusa aprobada',
+            registeredById: currentUser.id,
+          },
+          update: {
+            status: 'EXCUSADO',
+            registeredById: currentUser.id,
+          },
+        });
+      } else {
+        await tx.attendance.updateMany({
+          where: {
+            userId: existing.userId,
+            activityId: existing.activityId,
+            status: 'EXCUSADO',
+          },
+          data: { status: 'AUSENTE', registeredById: currentUser.id },
+        });
+      }
+      return result;
     });
 
     try {
@@ -134,10 +168,11 @@ export async function PATCH(req: Request) {
 
     return NextResponse.json(
       {
-        error: 'Error revisando excusa',
-        details: String(error),
+        error: 'Error revisando excusa'
       },
       { status: 500 }
     );
   }
 }
+
+export const dynamic = 'force-dynamic';

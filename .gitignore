@@ -1,3 +1,12 @@
 .env
+.next/
+node_modules/
+data/uploads/*
+!data/uploads/excuses/
+data/uploads/excuses/*
+!data/uploads/excuses/1776901928729-8de79c7e-c42f-4c28-822f-cf372d6530ef-Captura_de_pantalla_2026-04-22_175142.png
+public/uploads/
+tsconfig.tsbuildinfo
+backups/
 .next
 node_modules

@@ -21,9 +21,9 @@ export async function GET(
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
     }
 
-    const canView =
-      hasPermission(currentUser.permissions, 'attendance.view') ||
-      hasPermission(currentUser.permissions, 'attendance.view.own');
+    const canViewAll = hasPermission(currentUser.permissions, 'attendance.view');
+    const canViewOwn = hasPermission(currentUser.permissions, 'attendance.view.own');
+    const canView = canViewAll || canViewOwn;
 
     if (!canView) {
       return NextResponse.json(
@@ -42,6 +42,7 @@ export async function GET(
         activityDate: true,
         location: true,
         assignedUsers: {
+          where: canViewAll ? undefined : { userId: currentUser.id },
           include: {
             user: {
               select: {
@@ -66,9 +67,18 @@ export async function GET(
         { status: 404 }
       );
     }
+    if (!canViewAll && activity.assignedUsers.length === 0) {
+      return NextResponse.json(
+        { error: 'No estás asignado a esta actividad' },
+        { status: 403 }
+      );
+    }
 
     const attendance = await prisma.attendance.findMany({
-      where: { activityId },
+      where: {
+        activityId,
+        ...(canViewAll ? {} : { userId: currentUser.id }),
+      },
       select: {
         id: true,
         userId: true,
@@ -81,6 +91,7 @@ export async function GET(
       where: {
         activityId,
         status: 'APROBADA',
+        ...(canViewAll ? {} : { userId: currentUser.id }),
       },
       select: {
         userId: true,
@@ -124,8 +135,7 @@ export async function GET(
 
     return NextResponse.json(
       {
-        error: 'Error cargando asistencia',
-        details: String(error),
+        error: 'Error cargando asistencia'
       },
       { status: 500 }
     );
@@ -287,10 +297,11 @@ export async function POST(
 
     return NextResponse.json(
       {
-        error: 'Error guardando asistencia',
-        details: String(error),
+        error: 'Error guardando asistencia'
       },
       { status: 500 }
     );
   }
 }
+
+export const dynamic = 'force-dynamic';

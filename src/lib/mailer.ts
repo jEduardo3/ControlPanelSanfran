@@ -1,10 +1,20 @@
 import nodemailer from 'nodemailer';
+import { GUATEMALA_TIME_ZONE } from './date-time';
 
 const smtpHost = process.env.SMTP_HOST;
 const smtpPort = Number(process.env.SMTP_PORT ?? 587);
 const smtpUser = process.env.SMTP_USER;
 const smtpPass = process.env.SMTP_PASS;
 const smtpFrom = process.env.SMTP_FROM;
+
+function escapeHtml(value: string | null | undefined) {
+  return (value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
 
 function getTransporter() {
   if (!smtpHost || !smtpUser || !smtpPass || !smtpFrom) {
@@ -33,17 +43,19 @@ type PaymentEmailParams = {
   receiptUrl?: string | null;
   paymentDate: Date;
   remainingBalance: number;
-  obligationStatus: 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
+  obligationStatus: 'PENDIENTE' | 'PARCIAL' | 'PAGADO' | 'VENCIDO';
 };
 
 function getFriendlyObligationStatus(
-  status: 'PENDIENTE' | 'PARCIAL' | 'PAGADO'
+  status: 'PENDIENTE' | 'PARCIAL' | 'PAGADO' | 'VENCIDO'
 ) {
   switch (status) {
     case 'PAGADO':
       return 'Pagado completamente';
     case 'PARCIAL':
       return 'Pago parcial';
+    case 'VENCIDO':
+      return 'Vencido';
     default:
       return 'Pendiente';
   }
@@ -59,7 +71,7 @@ export async function sendPaymentReceiptEmail(params: PaymentEmailParams) {
 
   const formattedAmount = `Q ${params.amountPaid.toFixed(2)}`;
   const formattedBalance = `Q ${params.remainingBalance.toFixed(2)}`;
-  const formattedDate = params.paymentDate.toLocaleString('es-GT');
+  const formattedDate = params.paymentDate.toLocaleString('es-GT', { timeZone: GUATEMALA_TIME_ZONE });
   const friendlyStatus = getFriendlyObligationStatus(params.obligationStatus);
 
   const statusMessage =
@@ -75,16 +87,16 @@ export async function sendPaymentReceiptEmail(params: PaymentEmailParams) {
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
         <h2>Pago registrado correctamente</h2>
 
-        <p>Hola <strong>${params.fullName}</strong>,</p>
+        <p>Hola <strong>${escapeHtml(params.fullName)}</strong>,</p>
 
         <p>Se ha registrado un pago en el sistema de tesorería.</p>
 
         <ul>
-          <li><strong>Responsabilidad:</strong> ${params.obligationTitle}</li>
+          <li><strong>Responsabilidad:</strong> ${escapeHtml(params.obligationTitle)}</li>
           <li><strong>Monto pagado:</strong> ${formattedAmount}</li>
           <li><strong>Saldo restante:</strong> ${formattedBalance}</li>
           <li><strong>Estado actual:</strong> ${friendlyStatus}</li>
-          <li><strong>Método de pago:</strong> ${params.paymentMethod ?? 'No especificado'}</li>
+          <li><strong>Método de pago:</strong> ${escapeHtml(params.paymentMethod ?? 'No especificado')}</li>
           <li><strong>Fecha:</strong> ${formattedDate}</li>
         </ul>
 
@@ -120,7 +132,7 @@ export async function sendObligationAssignedEmail(
   const transporter = getTransporter();
 
   const formattedAmount = `Q ${params.amount.toFixed(2)}`;
-  const formattedDueDate = params.dueDate.toLocaleDateString('es-GT');
+  const formattedDueDate = params.dueDate.toLocaleDateString('es-GT', { timeZone: GUATEMALA_TIME_ZONE });
 
   await transporter.sendMail({
     from: smtpFrom,
@@ -130,13 +142,13 @@ export async function sendObligationAssignedEmail(
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
         <h2>Nueva Responsabilidad Asignada</h2>
 
-        <p>Hola <strong>${params.fullName}</strong>,</p>
+        <p>Hola <strong>${escapeHtml(params.fullName)}</strong>,</p>
 
        <p>Se te ha asignado una nueva responsabilidad dentro de la hermandad.</p>
 
         <ul>
-          <li><strong>Responsabilidad:</strong> ${params.obligationTitle}</li>
-          <li><strong>Descripción:</strong> ${params.description ?? 'Sin descripción'}</li>
+          <li><strong>Responsabilidad:</strong> ${escapeHtml(params.obligationTitle)}</li>
+          <li><strong>Descripción:</strong> ${escapeHtml(params.description ?? 'Sin descripción')}</li>
           <li><strong>Monto:</strong> ${formattedAmount}</li>
           <li><strong>Fecha límite:</strong> ${formattedDueDate}</li>
         </ul>
@@ -163,7 +175,7 @@ export async function sendExcuseReviewedEmail(
 ) {
   const transporter = getTransporter();
 
-  const formattedDate = params.activityDate.toLocaleString('es-GT');
+  const formattedDate = params.activityDate.toLocaleString('es-GT', { timeZone: GUATEMALA_TIME_ZONE });
 
   const statusText =
     params.status === 'APROBADA' ? 'Aprobada' : 'Rechazada';
@@ -184,15 +196,15 @@ export async function sendExcuseReviewedEmail(
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
         <h2>Actualización de excusa</h2>
 
-        <p>Hola <strong>${params.fullName}</strong>,</p>
+        <p>Hola <strong>${escapeHtml(params.fullName)}</strong>,</p>
 
         <p style="color:${statusColor};"><strong>${statusMessage}</strong></p>
 
         <ul>
-          <li><strong>Actividad:</strong> ${params.activityTitle}</li>
+          <li><strong>Actividad:</strong> ${escapeHtml(params.activityTitle)}</li>
           <li><strong>Fecha de actividad:</strong> ${formattedDate}</li>
           <li><strong>Estado:</strong> ${statusText}</li>
-          <li><strong>Justificación enviada:</strong> ${params.reason}</li>
+          <li><strong>Justificación enviada:</strong> ${escapeHtml(params.reason)}</li>
         </ul>
 
         <p>Si tienes dudas, puedes comunicarte con la administración.</p>
@@ -216,7 +228,7 @@ export async function sendActivityAssignedEmail(
 ) {
   const transporter = getTransporter();
 
-  const formattedDate = params.activityDate.toLocaleString('es-GT');
+  const formattedDate = params.activityDate.toLocaleString('es-GT', { timeZone: GUATEMALA_TIME_ZONE });
 
   await transporter.sendMail({
     from: smtpFrom,
@@ -226,15 +238,15 @@ export async function sendActivityAssignedEmail(
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
         <h2>Nueva actividad asignada</h2>
 
-        <p>Hola <strong>${params.fullName}</strong>,</p>
+        <p>Hola <strong>${escapeHtml(params.fullName)}</strong>,</p>
 
         <p>Se te ha asignado una nueva actividad dentro del sistema de la hermandad.</p>
 
         <ul>
-          <li><strong>Actividad:</strong> ${params.activityTitle}</li>
-          <li><strong>Descripción:</strong> ${params.description ?? 'Sin descripción'}</li>
+          <li><strong>Actividad:</strong> ${escapeHtml(params.activityTitle)}</li>
+          <li><strong>Descripción:</strong> ${escapeHtml(params.description ?? 'Sin descripción')}</li>
           <li><strong>Fecha y hora:</strong> ${formattedDate}</li>
-          <li><strong>Ubicación:</strong> ${params.location ?? 'Sin ubicación definida'}</li>
+          <li><strong>Ubicación:</strong> ${escapeHtml(params.location ?? 'Sin ubicación definida')}</li>
         </ul>
 
         <p>Por favor revisa tu panel para más detalles.</p>
@@ -259,7 +271,7 @@ export async function sendAttendanceRegisteredEmail(
 ) {
   const transporter = getTransporter();
 
-  const formattedDate = params.activityDate.toLocaleString('es-GT');
+  const formattedDate = params.activityDate.toLocaleString('es-GT', { timeZone: GUATEMALA_TIME_ZONE });
 
   const friendlyStatus =
     params.status === 'PRESENTE'
@@ -276,16 +288,16 @@ export async function sendAttendanceRegisteredEmail(
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
         <h2>Registro de asistencia</h2>
 
-        <p>Hola <strong>${params.fullName}</strong>,</p>
+        <p>Hola <strong>${escapeHtml(params.fullName)}</strong>,</p>
 
         <p>Se ha registrado tu asistencia para esta actividad.</p>
 
         <ul>
-          <li><strong>Actividad:</strong> ${params.activityTitle}</li>
+          <li><strong>Actividad:</strong> ${escapeHtml(params.activityTitle)}</li>
           <li><strong>Fecha y hora:</strong> ${formattedDate}</li>
-          <li><strong>Ubicación:</strong> ${params.location ?? 'Sin ubicación definida'}</li>
+          <li><strong>Ubicación:</strong> ${escapeHtml(params.location ?? 'Sin ubicación definida')}</li>
           <li><strong>Estado:</strong> ${friendlyStatus}</li>
-          <li><strong>Notas:</strong> ${params.notes || 'Sin notas'}</li>
+          <li><strong>Notas:</strong> ${escapeHtml(params.notes || 'Sin notas')}</li>
         </ul>
 
         <p>Saludos,<br />Sistema de Hermandad</p>
@@ -313,13 +325,13 @@ export async function sendUserCredentialsEmail(
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
         <h2>Credenciales de acceso</h2>
 
-        <p>Hola <strong>${params.fullName}</strong>,</p>
+        <p>Hola <strong>${escapeHtml(params.fullName)}</strong>,</p>
 
         <p>Se ha creado tu usuario para ingresar al sistema interno de la hermandad.</p>
 
         <ul>
-          <li><strong>Usuario:</strong> ${params.username}</li>
-          <li><strong>Contraseña:</strong> ${params.password}</li>
+          <li><strong>Usuario:</strong> ${escapeHtml(params.username)}</li>
+          <li><strong>Contraseña:</strong> ${escapeHtml(params.password)}</li>
         </ul>
 
         <p>Por favor conserva esta información de forma segura.</p>
@@ -349,13 +361,13 @@ export async function sendTemporaryPasswordEmail(
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
         <h2>Restablece tu contraseña</h2>
 
-        <p>Hola <strong>${params.fullName}</strong>,</p>
+        <p>Hola <strong>${escapeHtml(params.fullName)}</strong>,</p>
 
         <p>Se ha generado una contraseña temporal para tu usuario.</p>
 
         <ul>
-          <li><strong>Usuario:</strong> ${params.username}</li>
-          <li><strong>Contraseña temporal:</strong> ${params.temporaryPassword}</li>
+          <li><strong>Usuario:</strong> ${escapeHtml(params.username)}</li>
+          <li><strong>Contraseña temporal:</strong> ${escapeHtml(params.temporaryPassword)}</li>
         </ul>
 
         <p>Al ingresar al sistema, deberás cambiar esta contraseña por una nueva.</p>

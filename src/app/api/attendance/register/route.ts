@@ -106,8 +106,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json(
       {
-        error: 'Error obteniendo asistencia',
-        details: String(error),
+        error: 'Error obteniendo asistencia'
       },
       { status: 500 }
     );
@@ -219,8 +218,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
-        error: 'Error registrando asistencia',
-        details: String(error),
+        error: 'Error registrando asistencia'
       },
       { status: 500 }
     );
@@ -324,8 +322,7 @@ export async function PATCH(req: Request) {
 
     return NextResponse.json(
       {
-        error: 'Error actualizando asistencia',
-        details: String(error),
+        error: 'Error actualizando asistencia'
       },
       { status: 500 }
     );
@@ -385,10 +382,11 @@ export async function DELETE(req: Request) {
 
     return NextResponse.json(
       {
-        error: 'Error eliminando asistencia',
-        details: String(error),
+        error: 'Error eliminando asistencia'
       },
       { status: 500 }
     );
   }
 }
+
+export const dynamic = 'force-dynamic';

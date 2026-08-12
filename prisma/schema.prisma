@@ -63,6 +63,8 @@ model User {
   email              String   @unique
   passwordHash       String
   mustChangePassword Boolean  @default(false)
+  sessionVersion     Int      @default(0)
+  passwordResetAt    DateTime?
   isActive           Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -206,6 +208,7 @@ model Excuse {
   @@index([activityId])
   @@index([userId])
   @@index([status])
+  @@unique([userId, activityId])
 }
 
 model FinancialObligation {

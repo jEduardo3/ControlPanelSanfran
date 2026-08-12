@@ -145,7 +145,7 @@ export default function TreasuryPage() {
 
   async function loadUsers() {
     try {
-      const res = await fetch('/api/users', {
+      const res = await fetch('/api/users?scope=obligation-assignees', {
         method: 'GET',
         credentials: 'include',
         cache: 'no-store',

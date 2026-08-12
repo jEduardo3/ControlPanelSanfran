@@ -4,19 +4,22 @@ import { paymentSchema } from '../../../lib/validations';
 import { getCurrentUser } from '../../../lib/session';
 import { hasPermission } from '../../../lib/permissions';
 import { sendPaymentReceiptEmail } from '../../../lib/mailer';
+import type { Prisma } from '@prisma/client';
 
-type ObligationStatus = 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
+type ObligationStatus = 'PENDIENTE' | 'PARCIAL' | 'PAGADO' | 'VENCIDO';
 
 function calculateStatus(
   balance: number,
-  assignedAmount: number
+  assignedAmount: number,
+  dueDate: Date
 ): ObligationStatus {
   if (balance <= 0) return 'PAGADO';
+  if (dueDate.getTime() < Date.now()) return 'VENCIDO';
   if (balance < assignedAmount) return 'PARCIAL';
   return 'PENDIENTE';
 }
 
-async function recalculateUserObligation(tx: any, userObligationId: string) {
+async function recalculateUserObligation(tx: Prisma.TransactionClient, userObligationId: string) {
   const userObligation = await tx.userObligation.findUnique({
     where: { id: userObligationId },
     include: {
@@ -25,6 +28,7 @@ async function recalculateUserObligation(tx: any, userObligationId: string) {
           amountPaid: true,
         },
       },
+      obligation: { select: { dueDate: true } },
     },
   });
 
@@ -34,13 +38,12 @@ async function recalculateUserObligation(tx: any, userObligationId: string) {
 
   const assignedAmount = Number(userObligation.assignedAmount);
   const totalPaid = userObligation.payments.reduce(
-    (acc: number, payment: { amountPaid: number }) =>
-      acc + Number(payment.amountPaid),
+    (acc, payment) => acc + Number(payment.amountPaid),
     0
   );
 
   const newBalance = Math.max(assignedAmount - totalPaid, 0);
-  const newStatus = calculateStatus(newBalance, assignedAmount);
+  const newStatus = calculateStatus(newBalance, assignedAmount, userObligation.obligation.dueDate);
 
   const updated = await tx.userObligation.update({
     where: { id: userObligationId },
@@ -73,6 +76,15 @@ export async function GET() {
         { status: 403 }
       );
     }
+
+    await prisma.userObligation.updateMany({
+      where: {
+        balance: { gt: 0 },
+        status: { in: ['PENDIENTE', 'PARCIAL'] },
+        obligation: { dueDate: { lt: new Date() } },
+      },
+      data: { status: 'VENCIDO' },
+    });
 
     const payments = await prisma.payment.findMany({
       orderBy: { paymentDate: 'desc' },
@@ -117,7 +129,7 @@ export async function GET() {
   } catch (error) {
     console.error('GET /api/payments error:', error);
     return NextResponse.json(
-      { error: 'Error obteniendo pagos', details: String(error) },
+      { error: 'Error obteniendo pagos' },
       { status: 500 }
     );
   }
@@ -176,7 +188,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const currentBalance = Number(obligation.balance);
     const amountPaid = Number(parsed.data.amountPaid);
 
     if (amountPaid <= 0) {
@@ -186,14 +197,13 @@ export async function POST(req: Request) {
       );
     }
 
-    if (amountPaid > currentBalance) {
-      return NextResponse.json(
-        { error: 'El pago no puede ser mayor al saldo pendiente' },
-        { status: 400 }
-      );
-    }
-
     const result = await prisma.$transaction(async (tx) => {
+      const latestObligation = await tx.userObligation.findUnique({
+        where: { id: parsed.data.userObligationId },
+      });
+      if (!latestObligation || amountPaid > Number(latestObligation.balance)) {
+        throw new Error('PAYMENT_EXCEEDS_BALANCE');
+      }
       const payment = await tx.payment.create({
         data: {
           userObligationId: parsed.data.userObligationId,
@@ -220,7 +230,7 @@ export async function POST(req: Request) {
         payment: updatedPayment,
         updatedUserObligation,
       };
-    });
+    }, { isolationLevel: 'Serializable' });
 
     try {
       await sendPaymentReceiptEmail({
@@ -247,8 +257,20 @@ export async function POST(req: Request) {
     );
   } catch (error) {
     console.error('POST /api/payments error:', error);
+    if (error instanceof Error && error.message === 'PAYMENT_EXCEEDS_BALANCE') {
+      return NextResponse.json(
+        { error: 'El pago no puede ser mayor al saldo pendiente' },
+        { status: 409 }
+      );
+    }
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2034') {
+      return NextResponse.json(
+        { error: 'Otro pago modificó el saldo. Actualiza e intenta nuevamente.' },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
-      { error: 'Error interno', details: String(error) },
+      { error: 'Error interno' },
       { status: 500 }
     );
   }
@@ -332,6 +354,18 @@ export async function PATCH(req: Request) {
     }
 
     await prisma.$transaction(async (tx) => {
+      const latest = await tx.payment.findUnique({
+        where: { id },
+        include: { userObligation: true },
+      });
+      if (!latest) throw new Error('PAYMENT_NOT_FOUND');
+      const otherTotal = await tx.payment.aggregate({
+        where: { userObligationId: latest.userObligationId, NOT: { id } },
+        _sum: { amountPaid: true },
+      });
+      if (Number(otherTotal._sum.amountPaid ?? 0) + amountPaid > Number(latest.userObligation.assignedAmount)) {
+        throw new Error('PAYMENT_EXCEEDS_BALANCE');
+      }
       await tx.payment.update({
         where: { id },
         data: {
@@ -342,15 +376,21 @@ export async function PATCH(req: Request) {
       });
 
       await recalculateUserObligation(tx, existingPayment.userObligationId);
-    });
+    }, { isolationLevel: 'Serializable' });
 
     return NextResponse.json({
       message: 'Pago actualizado correctamente',
     });
   } catch (error) {
     console.error('PATCH /api/payments error:', error);
+    if (error instanceof Error && error.message === 'PAYMENT_EXCEEDS_BALANCE') {
+      return NextResponse.json(
+        { error: 'El total de pagos supera el monto asignado' },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
-      { error: 'Error actualizando pago', details: String(error) },
+      { error: 'Error actualizando pago' },
       { status: 500 }
     );
   }
@@ -406,8 +446,10 @@ export async function DELETE(req: Request) {
   } catch (error) {
     console.error('DELETE /api/payments error:', error);
     return NextResponse.json(
-      { error: 'Error eliminando pago', details: String(error) },
+      { error: 'Error eliminando pago' },
       { status: 500 }
     );
   }
 }
+
+export const dynamic = 'force-dynamic';

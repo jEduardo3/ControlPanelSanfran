@@ -10,9 +10,16 @@ export type SessionUser = {
   roleName: string | null;
   permissions: string[];
   mustChangePassword: boolean;
+  sessionVersion: number;
 };
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 24) {
+    throw new Error('JWT_SECRET debe existir y tener al menos 24 caracteres');
+  }
+  return secret;
+}
 
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 10);
@@ -23,12 +30,12 @@ export async function comparePassword(password: string, hash: string) {
 }
 
 export function signToken(user: SessionUser) {
-  return jwt.sign(user, JWT_SECRET, { expiresIn: '8h' });
+  return jwt.sign(user, getJwtSecret(), { expiresIn: '8h' });
 }
 
 export function verifyToken(token: string): SessionUser | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as SessionUser;
+    return jwt.verify(token, getJwtSecret()) as SessionUser;
   } catch {
     return null;
   }

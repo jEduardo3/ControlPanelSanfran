@@ -196,8 +196,10 @@ export async function GET(_: Request, { params }: Params) {
   } catch (error) {
     console.error('GET /api/payments/[id]/receipt error:', error);
     return NextResponse.json(
-      { error: 'Error generando recibo', details: String(error) },
+      { error: 'Error generando recibo' },
       { status: 500 }
     );
   }
 }
+
+export const dynamic = 'force-dynamic';

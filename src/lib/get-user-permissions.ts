@@ -25,13 +25,14 @@ export async function getUserWithPermissions(userId: string) {
   const rolePermissions =
     user.role?.rolePermissions.map((rp) => rp.permission.code) ?? [];
 
-  const directPermissions =
-    user.userPermissions
-      .filter((up) => up.granted)
-      .map((up) => up.permission.code) ?? [];
+  const permissionSet = new Set(rolePermissions);
+  for (const override of user.userPermissions) {
+    if (override.granted) permissionSet.add(override.permission.code);
+    else permissionSet.delete(override.permission.code);
+  }
 
   return {
     ...user,
-    permissions: [...new Set([...rolePermissions, ...directPermissions])],
+    permissions: [...permissionSet],
   };
 }

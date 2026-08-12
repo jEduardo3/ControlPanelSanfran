@@ -54,7 +54,7 @@ const [showConfirmPassword, setShowConfirmPassword] =
       setMessage('Contraseña actualizada correctamente.');
 
       setTimeout(() => {
-        router.push('/dashboard');
+        router.push('/login');
         router.refresh();
       }, 800);
     } catch (error) {

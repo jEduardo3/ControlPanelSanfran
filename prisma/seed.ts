@@ -211,14 +211,17 @@ if (!superAdminRole || !colaboradorRole || !juntaRole) {
   throw new Error('No se pudieron crear los roles base');
 }
 
-const passwordHash = await bcrypt.hash('123456', 10);
+const seedPassword = process.env.SEED_PASSWORD;
+if (!seedPassword || seedPassword.length < 12) {
+  throw new Error('Define SEED_PASSWORD con al menos 12 caracteres antes de ejecutar el seed');
+}
+const passwordHash = await bcrypt.hash(seedPassword, 10);
 
 await prisma.user.upsert({
   where: { email: 'admin@tesoreria.com' },
   update: {
     fullName: 'Administrador Principal',
     username: 'admin',
-    passwordHash,
     roleId: superAdminRole.id,
     isActive: true,
   },
@@ -236,7 +239,6 @@ await prisma.user.upsert({
   update: {
     fullName: 'Usuario Colaborador',
     username: 'colaborador',
-    passwordHash,
     roleId: colaboradorRole.id,
     isActive: true,
   },
@@ -255,7 +257,6 @@ await prisma.user.upsert({
   update: {
     fullName: 'Usuario Junta',
     username: 'junta',
-    passwordHash,
     roleId: juntaRole.id,
     isActive: true,
   },
@@ -270,9 +271,7 @@ await prisma.user.upsert({
 });
 
  console.log('Seed ejecutado correctamente');
-console.log('Admin: admin@tesoreria.com / 123456');
-console.log('Colaborador: colaborador@tesoreria.com / 123456');
-console.log('Junta: junta@tesoreria.com / 123456');
+console.log('Usuarios demo creados; se utilizó SEED_PASSWORD.');
 }
 
 main()

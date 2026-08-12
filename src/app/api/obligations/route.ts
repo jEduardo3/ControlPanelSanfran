@@ -5,13 +5,15 @@ import { getCurrentUser } from '../../../lib/session';
 import { hasPermission } from '../../../lib/permissions';
 import { sendObligationAssignedEmail } from '../../../lib/mailer';
 
-type ObligationStatus = 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
+type ObligationStatus = 'PENDIENTE' | 'PARCIAL' | 'PAGADO' | 'VENCIDO';
 
 function calculateStatus(
   balance: number,
-  assignedAmount: number
+  assignedAmount: number,
+  dueDate: Date
 ): ObligationStatus {
   if (balance <= 0) return 'PAGADO';
+  if (dueDate.getTime() < Date.now()) return 'VENCIDO';
   if (balance < assignedAmount) return 'PARCIAL';
   return 'PENDIENTE';
 }
@@ -36,6 +38,14 @@ export async function GET() {
         { status: 403 }
       );
     }
+    await prisma.userObligation.updateMany({
+      where: {
+        balance: { gt: 0 },
+        status: { in: ['PENDIENTE', 'PARCIAL'] },
+        obligation: { dueDate: { lt: new Date() } },
+      },
+      data: { status: 'VENCIDO' },
+    });
 
     const obligations = await prisma.userObligation.findMany({
       orderBy: { assignedAt: 'desc' },
@@ -71,7 +81,7 @@ export async function GET() {
   } catch (error) {
     console.error('GET /api/obligations error:', error);
     return NextResponse.json(
-      { error: 'Error obteniendo obligaciones', details: String(error) },
+      { error: 'Error obteniendo obligaciones' },
       { status: 500 }
     );
   }
@@ -94,6 +104,17 @@ export async function POST(req: Request) {
 
     const body = await req.json();
 
+    if (
+      Array.isArray(body.userIds) &&
+      body.userIds.length > 0 &&
+      !hasPermission(currentUser.permissions, 'obligations.assign')
+    ) {
+      return NextResponse.json(
+        { error: 'No tienes permiso para asignar obligaciones' },
+        { status: 403 }
+      );
+    }
+
     const parsed = obligationSchema.safeParse({
       ...body,
       createdById: currentUser.id,
@@ -106,44 +127,41 @@ export async function POST(req: Request) {
       );
     }
 
-    const createdObligation = await prisma.financialObligation.create({
-      data: {
-        title: parsed.data.title,
-        description: parsed.data.description,
-        amount: parsed.data.amount,
-        dueDate: new Date(parsed.data.dueDate),
-        createdById: currentUser.id,
-      },
+    const userIds = [...new Set(parsed.data.userIds)];
+    const assignedUsers = await prisma.user.findMany({
+      where: { id: { in: userIds }, isActive: true },
+      select: { id: true, fullName: true, email: true },
     });
-
-    let assignedUsers: Array<{
-      fullName: string;
-      email: string;
-    }> = [];
-
-    if (parsed.data.userIds.length > 0) {
-      await prisma.userObligation.createMany({
-        data: parsed.data.userIds.map((userId) => ({
-          obligationId: createdObligation.id,
-          userId,
-          assignedAmount: parsed.data.amount,
-          balance: parsed.data.amount,
-          status: 'PENDIENTE',
-        })),
-      });
-
-      assignedUsers = await prisma.user.findMany({
-        where: {
-          id: {
-            in: parsed.data.userIds,
-          },
-        },
-        select: {
-          fullName: true,
-          email: true,
-        },
-      });
+    if (assignedUsers.length !== userIds.length) {
+      return NextResponse.json(
+        { error: 'Uno o más usuarios asignados no existen o están inactivos' },
+        { status: 400 }
+      );
     }
+
+    const createdObligation = await prisma.$transaction(async (tx) => {
+      const obligation = await tx.financialObligation.create({
+        data: {
+          title: parsed.data.title,
+          description: parsed.data.description,
+          amount: parsed.data.amount,
+          dueDate: new Date(parsed.data.dueDate),
+          createdById: currentUser.id,
+        },
+      });
+      if (userIds.length > 0) {
+        await tx.userObligation.createMany({
+          data: userIds.map((userId) => ({
+            obligationId: obligation.id,
+            userId,
+            assignedAmount: parsed.data.amount,
+            balance: parsed.data.amount,
+            status: 'PENDIENTE',
+          })),
+        });
+      }
+      return obligation;
+    });
 
     for (const user of assignedUsers) {
       try {
@@ -170,7 +188,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error('POST /api/obligations error:', error);
     return NextResponse.json(
-      { error: 'Error interno', details: String(error) },
+      { error: 'Error interno' },
       { status: 500 }
     );
   }
@@ -247,7 +265,7 @@ export async function PATCH(req: Request) {
         );
 
         const newBalance = Math.max(amount - totalPaid, 0);
-        const newStatus = calculateStatus(newBalance, amount);
+        const newStatus = calculateStatus(newBalance, amount, new Date(dueDate));
 
         await tx.userObligation.update({
           where: { id: userObligation.id },
@@ -266,7 +284,7 @@ export async function PATCH(req: Request) {
   } catch (error) {
     console.error('PATCH /api/obligations error:', error);
     return NextResponse.json(
-      { error: 'Error actualizando obligación', details: String(error) },
+      { error: 'Error actualizando obligación' },
       { status: 500 }
     );
   }
@@ -347,8 +365,10 @@ export async function DELETE(req: Request) {
   } catch (error) {
     console.error('DELETE /api/obligations error:', error);
     return NextResponse.json(
-      { error: 'Error eliminando obligación', details: String(error) },
+      { error: 'Error eliminando obligación' },
       { status: 500 }
     );
   }
 }
+
+export const dynamic = 'force-dynamic';

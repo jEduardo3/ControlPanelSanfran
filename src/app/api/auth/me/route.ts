@@ -3,7 +3,7 @@ import { getCurrentUser } from '../../../../lib/session';
 
 export async function GET() {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser({ allowPasswordChange: true });
 
     if (!user) {
       return NextResponse.json(
@@ -17,8 +17,10 @@ export async function GET() {
     console.error('GET /api/auth/me error:', error);
 
     return NextResponse.json(
-      { error: 'Error obteniendo sesión', details: String(error) },
+      { error: 'Error obteniendo sesión' },
       { status: 500 }
     );
   }
 }
+
+export const dynamic = 'force-dynamic';

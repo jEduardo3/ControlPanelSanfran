@@ -2,9 +2,16 @@ import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 import { comparePassword, signToken } from '../../../../lib/auth';
 import { getSessionCookieName } from '../../../../lib/session';
+import { consumeRateLimit, requestIp } from '../../../../lib/rate-limit';
 
 export async function POST(req: Request) {
   try {
+    if (!consumeRateLimit(`login:${requestIp(req)}`, 10, 15 * 60 * 1000)) {
+      return NextResponse.json(
+        { error: 'Demasiados intentos. Intenta nuevamente más tarde.' },
+        { status: 429 }
+      );
+    }
     const body = await req.json();
 
     const identifier = String(body.identifier ?? '').trim();
@@ -72,13 +79,12 @@ export async function POST(req: Request) {
     const permissionsFromRole =
       user.role?.rolePermissions.map((rp) => rp.permission.code) ?? [];
 
-    const permissionsFromUser = user.userPermissions
-      .filter((up) => up.granted)
-      .map((up) => up.permission.code);
-
-    const permissions = Array.from(
-      new Set([...permissionsFromRole, ...permissionsFromUser])
-    );
+    const permissionSet = new Set(permissionsFromRole);
+    for (const override of user.userPermissions) {
+      if (override.granted) permissionSet.add(override.permission.code);
+      else permissionSet.delete(override.permission.code);
+    }
+    const permissions = [...permissionSet];
 
    const token = await signToken({
   id: user.id,
@@ -88,6 +94,7 @@ export async function POST(req: Request) {
   roleName: user.role?.name ?? null,
   permissions,
   mustChangePassword: user.mustChangePassword,
+  sessionVersion: user.sessionVersion,
 });
 
     const response = NextResponse.json({
@@ -117,7 +124,7 @@ export async function POST(req: Request) {
     console.error('POST /api/auth/login error:', error);
 
     return NextResponse.json(
-      { error: 'Error interno', details: String(error) },
+      { error: 'Error interno' },
       { status: 500 }
     );
   }

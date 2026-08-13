@@ -2,6 +2,9 @@ import './globals.css';
 import type { Metadata } from 'next';
 import NavbarWrapper from '../components/navbar-wrapper';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const criticalStyles = `
   :root {
     --text-main: #f7f4fb;

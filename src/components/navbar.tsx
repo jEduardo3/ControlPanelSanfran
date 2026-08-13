@@ -1,9 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { hasPermission } from '../lib/permissions';
 import { clearClientSession, fetchCurrentSession } from '../lib/client-session';
 
@@ -17,7 +16,6 @@ type CurrentUser = {
 
 export default function Navbar() {
   const pathname = usePathname();
-  const router = useRouter();
 
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -60,8 +58,7 @@ export default function Navbar() {
       console.error(error);
     } finally {
       clearClientSession();
-      router.push('/login');
-      router.refresh();
+      window.location.assign('/login');
     }
   }
 
@@ -113,7 +110,7 @@ export default function Navbar() {
     <header className="topbar">
       <div className="topbar-inner">
         <div className="topbar-main-row">
-          <Link href={isLoggedIn ? '/dashboard' : '/login'} className="brand">
+          <a href={isLoggedIn ? '/dashboard' : '/login'} className="brand">
           <div className="brand-logo-wrap">
             <Image
               src="/branding/logo.png"
@@ -143,7 +140,7 @@ export default function Navbar() {
               priority
             />
           </div>
-          </Link>
+          </a>
 
           {isLoggedIn ? (
             <button
@@ -171,14 +168,14 @@ export default function Navbar() {
                 const active = pathname === item.href;
 
                 return (
-                  <Link
+                  <a
                     key={item.href}
                     href={item.href}
                     className={`nav-link ${active ? 'active' : ''}`}
                     onClick={() => setMenuOpen(false)}
                   >
                     {item.label}
-                  </Link>
+                  </a>
                 );
               })}
             </nav>

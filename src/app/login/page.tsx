@@ -2,11 +2,8 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const router = useRouter();
-
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
 const [showPassword, setShowPassword] = useState(false);
@@ -40,11 +37,10 @@ const [showPassword, setShowPassword] = useState(false);
       }
 
       if (data.user?.mustChangePassword) {
-        router.push('/change-password');
+        window.location.assign('/change-password');
       } else {
-        router.push('/dashboard');
+        window.location.assign('/dashboard');
       }
-      router.refresh();
     } catch (error) {
       console.error(error);
       setErrorMessage('Ocurrió un error al iniciar sesión.');

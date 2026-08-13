@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { hasPermission } from '../../lib/permissions';
+import { fetchCurrentSession } from '../../lib/client-session';
 import PageHeader from '../../components/ui/page-header';
 import EmptyState from '../../components/ui/empty-state';
 import StatusBadge from '../../components/ui/status-badge';
@@ -174,18 +175,12 @@ export default function DashboardPage() {
 
   async function loadMe() {
     try {
-      const res = await fetch('/api/auth/me', {
-        credentials: 'include',
-        cache: 'no-store',
-      });
-
-      if (!res.ok) {
+      const session = await fetchCurrentSession<CurrentUser>();
+      if (!session.ok || !session.user) {
         router.push('/login');
         return;
       }
-
-      const data = await res.json();
-      const user = data.user as CurrentUser;
+      const user = session.user;
 
       const canView =
         hasPermission(user.permissions, 'dashboard.view') ||

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { hasPermission } from '../../lib/permissions';
+import { fetchCurrentSession } from '../../lib/client-session';
 
 type CurrentUser = {
   id: string;
@@ -72,18 +73,12 @@ export default function ReportsPage() {
 
   async function loadMe() {
     try {
-      const res = await fetch('/api/auth/me', {
-        credentials: 'include',
-        cache: 'no-store',
-      });
-
-      if (!res.ok) {
+      const session = await fetchCurrentSession<CurrentUser>();
+      if (!session.ok || !session.user) {
         router.push('/login');
         return;
       }
-
-      const data = await res.json();
-      const user = data.user as CurrentUser;
+      const user = session.user;
 
       if (!hasPermission(user.permissions, 'reports.view')) {
         router.push('/dashboard');

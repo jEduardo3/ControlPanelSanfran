@@ -154,7 +154,13 @@ export default function ActivitiesPage() {
       const data = await res.json();
 
       if (res.ok) {
-        const activeUsers = (data.data ?? []).filter((user: AppUser) => user.isActive !== false);
+        const activeUsers = (data.data ?? [])
+          .filter((user: AppUser) => user.isActive !== false)
+          .sort((firstUser: AppUser, secondUser: AppUser) =>
+            firstUser.fullName.localeCompare(secondUser.fullName, 'es', {
+              sensitivity: 'base',
+            })
+          );
         setUsers(activeUsers);
       }
     } catch (error) {

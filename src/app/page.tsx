@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 export default function HomePage() {
-  redirect('/login');
+  redirect('/acceso');
   return (
     <main className="grid" style={{ gap: 24 }}>
       <section className="card">
@@ -13,7 +13,7 @@ export default function HomePage() {
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <Link className="button" href="/dashboard">Ver dashboard</Link>
-          <Link className="button secondary" href="/login">Probar login</Link>
+          <Link className="button secondary" href="/acceso">Probar login</Link>
         </div>
       </section>
 

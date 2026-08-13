@@ -85,7 +85,7 @@ export default function ForgotPasswordPage() {
           </button>
 
           <Link
-            href="/login"
+            href="/acceso"
             style={{
               textAlign: 'center',
               opacity: 0.8,

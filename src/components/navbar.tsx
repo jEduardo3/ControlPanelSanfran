@@ -58,7 +58,7 @@ export default function Navbar() {
       console.error(error);
     } finally {
       clearClientSession();
-      window.location.assign('/login');
+      window.location.assign('/acceso');
     }
   }
 
@@ -110,7 +110,7 @@ export default function Navbar() {
     <header className="topbar">
       <div className="topbar-inner">
         <div className="topbar-main-row">
-          <a href={isLoggedIn ? '/dashboard' : '/login'} className="brand">
+          <a href={isLoggedIn ? '/dashboard' : '/acceso'} className="brand">
           <div className="brand-logo-wrap">
             <Image
               src="/branding/logo.png"

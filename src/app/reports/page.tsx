@@ -75,7 +75,7 @@ export default function ReportsPage() {
     try {
       const session = await fetchCurrentSession<CurrentUser>();
       if (!session.ok || !session.user) {
-        router.push('/login');
+        router.push('/acceso');
         return;
       }
       const user = session.user;
@@ -88,7 +88,7 @@ export default function ReportsPage() {
       setCurrentUser(user);
     } catch (error) {
       console.error(error);
-      router.push('/login');
+      router.push('/acceso');
     } finally {
       setCheckingAccess(false);
     }

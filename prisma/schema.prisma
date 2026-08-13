@@ -57,17 +57,17 @@ enum NotificationStatus {
 }
 
 model User {
-  id                 String   @id @default(uuid())
+  id                 String    @id @default(uuid())
   fullName           String
-  username           String   @unique
-  email              String   @unique
+  username           String    @unique
+  email              String    @unique
   passwordHash       String
-  mustChangePassword Boolean  @default(false)
-  sessionVersion     Int      @default(0)
+  mustChangePassword Boolean   @default(false)
+  sessionVersion     Int       @default(0)
   passwordResetAt    DateTime?
-  isActive           Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   roleId String?
   role   Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
@@ -77,6 +77,7 @@ model User {
   createdActivities   Activity[]            @relation("ActivityCreator")
   attendances         Attendance[]
   attendanceMarkedBy  Attendance[]          @relation("AttendanceRegisteredBy")
+  attendanceUpdated   Activity[]            @relation("AttendanceUpdatedBy")
   excuses             Excuse[]              @relation("ExcuseUser")
   excusesReviewed     Excuse[]              @relation("ExcuseReviewedBy")
   createdObligations  FinancialObligation[] @relation("ObligationCreator")
@@ -149,22 +150,27 @@ model UserPermission {
 }
 
 model Activity {
-  id           String   @id @default(uuid())
-  title        String
-  description  String?
-  activityDate DateTime
-  location     String?
-  createdById  String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                    String    @id @default(uuid())
+  title                 String
+  description           String?
+  activityDate          DateTime
+  location              String?
+  createdById           String
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  attendanceFinalized   Boolean   @default(false)
+  attendanceUpdatedAt   DateTime?
+  attendanceUpdatedById String?
 
-  createdBy     User                 @relation("ActivityCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  attendances   Attendance[]
-  excuses       Excuse[]
-  assignedUsers ActivityAssignment[]
+  createdBy           User                 @relation("ActivityCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  attendances         Attendance[]
+  excuses             Excuse[]
+  assignedUsers       ActivityAssignment[]
+  attendanceUpdatedBy User?                @relation("AttendanceUpdatedBy", fields: [attendanceUpdatedById], references: [id], onDelete: SetNull)
 
   @@index([activityDate])
   @@index([createdById])
+  @@index([attendanceUpdatedById])
 }
 
 model Attendance {
@@ -205,10 +211,10 @@ model Excuse {
   user       User     @relation("ExcuseUser", fields: [userId], references: [id], onDelete: Cascade)
   reviewedBy User?    @relation("ExcuseReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
 
+  @@unique([userId, activityId])
   @@index([activityId])
   @@index([userId])
   @@index([status])
-  @@unique([userId, activityId])
 }
 
 model FinancialObligation {

@@ -38,7 +38,8 @@ export async function GET(req: Request) {
 
     const whereClause: {
       userId?: string;
-    } = {};
+      activity: { attendanceFinalized: boolean };
+    } = { activity: { attendanceFinalized: true } };
 
     if (canViewAll) {
       if (requestedUserId) {

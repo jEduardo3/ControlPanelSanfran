@@ -212,7 +212,10 @@ export async function GET() {
       }),
 
       prisma.attendance.findMany({
-        where: isOwnOnly ? { userId: currentUser.id } : {},
+        where: {
+          ...(isOwnOnly ? { userId: currentUser.id } : {}),
+          activity: { attendanceFinalized: true },
+        },
         select: {
           status: true,
         },

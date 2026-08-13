@@ -9,6 +9,7 @@ import {
 } from '../../../../../lib/mailer';
 
 type AttendanceStatus = 'PRESENTE' | 'AUSENTE' | 'EXCUSADO';
+type SubmittedStatus = AttendanceStatus | 'PENDIENTE';
 
 export async function GET(
   req: Request,
@@ -41,6 +42,11 @@ export async function GET(
         title: true,
         activityDate: true,
         location: true,
+        attendanceFinalized: true,
+        attendanceUpdatedAt: true,
+        attendanceUpdatedBy: {
+          select: { fullName: true },
+        },
         assignedUsers: {
           where: canViewAll ? undefined : { userId: currentUser.id },
           include: {
@@ -113,7 +119,7 @@ export async function GET(
         attendanceId: existingAttendance?.id ?? null,
         status:
           existingAttendance?.status ??
-          (hasApprovedExcuse ? 'EXCUSADO' : 'AUSENTE'),
+          (hasApprovedExcuse ? 'EXCUSADO' : 'PENDIENTE'),
         notes: existingAttendance?.notes ?? '',
         hasApprovedExcuse,
       };
@@ -126,8 +132,14 @@ export async function GET(
           title: activity.title,
           activityDate: activity.activityDate,
           location: activity.location,
+          attendanceFinalized: activity.attendanceFinalized,
+          attendanceUpdatedAt: activity.attendanceUpdatedAt,
+          attendanceUpdatedBy: activity.attendanceUpdatedBy,
         },
         users,
+        permissions: {
+          canUpdate: hasPermission(currentUser.permissions, 'attendance.update'),
+        },
       },
     });
   } catch (error) {
@@ -165,16 +177,61 @@ export async function POST(
 
     const activityId = params.id;
     const body = await req.json();
+    const action = body.action as 'draft' | 'finalize' | 'correction';
 
     const records = body.records as Array<{
       userId: string;
-      status?: AttendanceStatus;
+      status?: SubmittedStatus;
       notes?: string;
     }>;
 
-    if (!Array.isArray(records)) {
+    if (!Array.isArray(records) || !['draft', 'finalize', 'correction'].includes(action)) {
       return NextResponse.json(
         { error: 'records debe ser un arreglo' },
+        { status: 400 }
+      );
+    }
+
+    const activityState = await prisma.activity.findUnique({
+      where: { id: activityId },
+      select: { attendanceFinalized: true },
+    });
+
+    if (!activityState) {
+      return NextResponse.json({ error: 'Actividad no encontrada' }, { status: 404 });
+    }
+
+    if (activityState.attendanceFinalized && !canUpdate) {
+      return NextResponse.json(
+        { error: 'La asistencia está finalizada y requiere permiso de edición' },
+        { status: 403 }
+      );
+    }
+
+    const validStatuses: SubmittedStatus[] = [
+      'PENDIENTE',
+      'PRESENTE',
+      'AUSENTE',
+      'EXCUSADO',
+    ];
+
+    if (records.some((record) => !record.userId || !record.status || !validStatuses.includes(record.status))) {
+      return NextResponse.json(
+        { error: 'Hay registros de asistencia inválidos' },
+        { status: 400 }
+      );
+    }
+
+    if (activityState.attendanceFinalized && action !== 'correction') {
+      return NextResponse.json(
+        { error: 'Usa Guardar correcciones para modificar una asistencia finalizada' },
+        { status: 400 }
+      );
+    }
+
+    if (!activityState.attendanceFinalized && action === 'correction') {
+      return NextResponse.json(
+        { error: 'La asistencia todavía no ha sido finalizada' },
         { status: 400 }
       );
     }
@@ -204,13 +261,30 @@ export async function POST(
 
     const recordsByUser = new Map(records.map((item) => [item.userId, item]));
 
+    const pendingUserIds = assignedUserIds.filter((userId) => {
+      const record = recordsByUser.get(userId);
+      return !excusedUserIds.has(userId) && (!record || record.status === 'PENDIENTE');
+    });
+
+    if ((action === 'finalize' || action === 'correction') && pendingUserIds.length > 0) {
+      return NextResponse.json(
+        { error: `Aún hay ${pendingUserIds.length} colaborador(es) pendientes` },
+        { status: 400 }
+      );
+    }
+
     await prisma.$transaction(async (tx) => {
       for (const userId of assignedUserIds) {
         const record = recordsByUser.get(userId);
 
+        if (!excusedUserIds.has(userId) && (!record || record.status === 'PENDIENTE')) {
+          await tx.attendance.deleteMany({ where: { userId, activityId } });
+          continue;
+        }
+
         const status: AttendanceStatus = excusedUserIds.has(userId)
           ? 'EXCUSADO'
-          : record?.status ?? 'AUSENTE';
+          : record!.status as AttendanceStatus;
 
         await tx.attendance.upsert({
           where: {
@@ -233,6 +307,15 @@ export async function POST(
           },
         });
       }
+
+      await tx.activity.update({
+        where: { id: activityId },
+        data: {
+          attendanceFinalized: action !== 'draft',
+          attendanceUpdatedAt: new Date(),
+          attendanceUpdatedById: currentUser.id,
+        },
+      });
     });
 
     const activity = await prisma.activity.findUnique({
@@ -258,7 +341,7 @@ export async function POST(
       },
     });
 
-    if (activity) {
+    if (activity && action === 'finalize') {
       await sendEmailBatch({
   items: usersToNotify,
   batchSize: 8,
@@ -268,7 +351,7 @@ export async function POST(
 
     const status: AttendanceStatus = excusedUserIds.has(user.id)
       ? 'EXCUSADO'
-      : record?.status ?? 'AUSENTE';
+      : record!.status as AttendanceStatus;
 
     await sendAttendanceRegisteredEmail({
       to: user.email,
@@ -290,7 +373,12 @@ export async function POST(
     }
 
     return NextResponse.json({
-      message: 'Asistencia guardada correctamente',
+      message:
+        action === 'draft'
+          ? 'Borrador guardado correctamente'
+          : action === 'correction'
+            ? 'Correcciones guardadas correctamente'
+            : 'Asistencia finalizada correctamente',
     });
   } catch (error) {
     console.error('POST /api/activities/[id]/attendance error:', error);

@@ -28,7 +28,10 @@ export async function GET(req: Request) {
     }
 
     const userFilter = selectedUserId ? { id: selectedUserId } : {};
-    const attendanceFilter = selectedUserId ? { userId: selectedUserId } : {};
+    const attendanceFilter = {
+      ...(selectedUserId ? { userId: selectedUserId } : {}),
+      activity: { attendanceFinalized: true },
+    };
     const excusesFilter = selectedUserId ? { userId: selectedUserId } : {};
     const obligationsFilter = selectedUserId ? { userId: selectedUserId } : {};
     const paymentsFilter = selectedUserId

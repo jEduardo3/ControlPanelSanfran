@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import PageHeader from '../../../../components/ui/page-header';
 import EmptyState from '../../../../components/ui/empty-state';
-type AttendanceStatus = 'PRESENTE' | 'AUSENTE' | 'EXCUSADO';
+type AttendanceStatus = 'PENDIENTE' | 'PRESENTE' | 'AUSENTE' | 'EXCUSADO';
 
 type Row = {
   user: {
@@ -28,6 +28,9 @@ export default function ActivityAttendancePage() {
     title: string;
     activityDate: string;
     location?: string | null;
+    attendanceFinalized: boolean;
+    attendanceUpdatedAt?: string | null;
+    attendanceUpdatedBy?: { fullName: string } | null;
   } | null>(null);
 
   const [rows, setRows] = useState<Row[]>([]);
@@ -35,6 +38,8 @@ export default function ActivityAttendancePage() {
   const [checking, setChecking] = useState(true);
   const [message, setMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [canUpdate, setCanUpdate] = useState(false);
+  const [editingFinalized, setEditingFinalized] = useState(false);
 
   async function loadAttendance() {
     try {
@@ -52,6 +57,8 @@ export default function ActivityAttendancePage() {
 
       setActivity(data.data.activity);
       setRows(data.data.users ?? []);
+      setCanUpdate(Boolean(data.data.permissions?.canUpdate));
+      setEditingFinalized(false);
     } catch (error) {
       console.error(error);
       setErrorMessage('No se pudo cargar la asistencia.');
@@ -99,16 +106,20 @@ export default function ActivityAttendancePage() {
     );
   }
 
-  function markAllAbsent() {
+  function markPendingAbsent() {
     setRows((prev) =>
       prev.map((row) => ({
         ...row,
-        status: row.hasApprovedExcuse ? 'EXCUSADO' : 'AUSENTE',
+        status: row.hasApprovedExcuse
+          ? 'EXCUSADO'
+          : row.status === 'PENDIENTE'
+            ? 'AUSENTE'
+            : row.status,
       }))
     );
   }
 
-  async function saveAttendance() {
+  async function saveAttendance(action: 'draft' | 'finalize' | 'correction') {
     setMessage('');
     setErrorMessage('');
     setLoading(true);
@@ -121,6 +132,7 @@ export default function ActivityAttendancePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          action,
           records: rows.map((row) => ({
             userId: row.user.id,
             status: row.status,
@@ -136,7 +148,7 @@ export default function ActivityAttendancePage() {
         return;
       }
 
-      setMessage('Asistencia guardada correctamente.');
+      setMessage(data.message ?? 'Asistencia guardada correctamente.');
       await loadAttendance();
     } catch (error) {
       console.error(error);
@@ -169,6 +181,9 @@ export default function ActivityAttendancePage() {
     );
   }
 
+  const isReadOnly = activity.attendanceFinalized && !editingFinalized;
+  const pendingCount = rows.filter((row) => row.status === 'PENDIENTE').length;
+
   return (
     <main style={{ display: 'grid', gap: '20px' }}>
       <section className="card">
@@ -194,23 +209,59 @@ export default function ActivityAttendancePage() {
           </p>
         ) : null}
 
+        <div className="alert alert-warning" style={{ marginBottom: '14px' }}>
+          Estado: <strong>{activity.attendanceFinalized ? 'Finalizada' : 'Borrador'}</strong>
+          {' · '}Pendientes: <strong>{pendingCount}</strong>
+          {activity.attendanceUpdatedAt ? (
+            <span>
+              {' · '}Última modificación:{' '}
+              {new Date(activity.attendanceUpdatedAt).toLocaleString('es-GT')}
+              {activity.attendanceUpdatedBy?.fullName
+                ? ` por ${activity.attendanceUpdatedBy.fullName}`
+                : ''}
+            </span>
+          ) : null}
+        </div>
+
         <div className="actions-wrap" style={{ marginBottom: '16px' }}>
-          <button type="button" className="button-success" onClick={markAllPresent}>
-            Marcar todos presentes
-          </button>
-
-          <button type="button" className="button-secondary" onClick={markAllAbsent}>
-            Marcar todos ausentes
-          </button>
-
-          <button
-            type="button"
-            className="button"
-            onClick={saveAttendance}
-            disabled={loading}
-          >
-            {loading ? 'Guardando...' : 'Guardar asistencia'}
-          </button>
+          {isReadOnly ? (
+            canUpdate ? (
+              <button type="button" className="button" onClick={() => setEditingFinalized(true)}>
+                Editar asistencia
+              </button>
+            ) : null
+          ) : (
+            <>
+              <button type="button" className="button-success" onClick={markAllPresent}>
+                Marcar todos presentes
+              </button>
+              <button type="button" className="button-secondary" onClick={markPendingAbsent}>
+                Marcar pendientes como ausentes
+              </button>
+              {!activity.attendanceFinalized ? (
+                <button type="button" className="button-secondary" onClick={() => saveAttendance('draft')} disabled={loading}>
+                  {loading ? 'Guardando...' : 'Guardar borrador'}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="button"
+                onClick={() => saveAttendance(activity.attendanceFinalized ? 'correction' : 'finalize')}
+                disabled={loading || pendingCount > 0}
+              >
+                {loading
+                  ? 'Guardando...'
+                  : activity.attendanceFinalized
+                    ? 'Guardar correcciones'
+                    : 'Finalizar asistencia'}
+              </button>
+              {editingFinalized ? (
+                <button type="button" className="button-secondary" onClick={() => void loadAttendance()} disabled={loading}>
+                  Cancelar edición
+                </button>
+              ) : null}
+            </>
+          )}
         </div>
 
         {message ? (
@@ -242,11 +293,12 @@ export default function ActivityAttendancePage() {
             >
               <thead>
                 <tr>
-                  <th style={{ width: '28%' }}>Nombre</th>
+                  <th style={{ width: '25%' }}>Nombre</th>
+                  <th style={{ width: '11%' }}>Pendiente</th>
                   <th style={{ width: '14%' }}>Asistió</th>
                   <th style={{ width: '14%' }}>No asistió</th>
-                  <th style={{ width: '14%' }}>Excusa</th>
-                  <th style={{ width: '30%' }}>Notas</th>
+                  <th style={{ width: '11%' }}>Excusa</th>
+                  <th style={{ width: '31%' }}>Notas</th>
                 </tr>
               </thead>
 
@@ -264,8 +316,18 @@ export default function ActivityAttendancePage() {
                       <input
                         type="radio"
                         name={`status-${row.user.id}`}
+                        checked={row.status === 'PENDIENTE'}
+                        disabled={row.hasApprovedExcuse || isReadOnly}
+                        onChange={() => updateStatus(row.user.id, 'PENDIENTE')}
+                      />
+                    </td>
+
+                    <td>
+                      <input
+                        type="radio"
+                        name={`status-${row.user.id}`}
                         checked={row.status === 'PRESENTE'}
-                        disabled={row.hasApprovedExcuse}
+                        disabled={row.hasApprovedExcuse || isReadOnly}
                         onChange={() => updateStatus(row.user.id, 'PRESENTE')}
                       />
                     </td>
@@ -275,7 +337,7 @@ export default function ActivityAttendancePage() {
                         type="radio"
                         name={`status-${row.user.id}`}
                         checked={row.status === 'AUSENTE'}
-                        disabled={row.hasApprovedExcuse}
+                        disabled={row.hasApprovedExcuse || isReadOnly}
                         onChange={() => updateStatus(row.user.id, 'AUSENTE')}
                       />
                     </td>
@@ -285,6 +347,7 @@ export default function ActivityAttendancePage() {
                         type="radio"
                         name={`status-${row.user.id}`}
                         checked={row.status === 'EXCUSADO'}
+                        disabled={isReadOnly}
                         onChange={() => updateStatus(row.user.id, 'EXCUSADO')}
                       />
 
@@ -299,6 +362,7 @@ export default function ActivityAttendancePage() {
                       <input
                         className="input"
                         value={row.notes}
+                        disabled={isReadOnly}
                         onChange={(e) => updateNotes(row.user.id, e.target.value)}
                         placeholder="Nota opcional"
                       />

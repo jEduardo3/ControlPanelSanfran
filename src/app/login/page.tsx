@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
+import { navigateFresh } from '../../lib/navigation';
 
 export default function LoginPage() {
   const [identifier, setIdentifier] = useState('');
@@ -37,9 +38,9 @@ const [showPassword, setShowPassword] = useState(false);
       }
 
       if (data.user?.mustChangePassword) {
-        window.location.assign('/change-password');
+        navigateFresh('/change-password');
       } else {
-        window.location.assign('/dashboard');
+        navigateFresh('/dashboard');
       }
     } catch (error) {
       console.error(error);

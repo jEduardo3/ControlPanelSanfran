@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { hasPermission } from '../lib/permissions';
 import { clearClientSession, fetchCurrentSession } from '../lib/client-session';
+import { navigateFresh } from '../lib/navigation';
 
 type CurrentUser = {
   id: string;
@@ -58,7 +59,7 @@ export default function Navbar() {
       console.error(error);
     } finally {
       clearClientSession();
-      window.location.assign('/acceso');
+      navigateFresh('/acceso');
     }
   }
 
@@ -110,7 +111,14 @@ export default function Navbar() {
     <header className="topbar">
       <div className="topbar-inner">
         <div className="topbar-main-row">
-          <a href={isLoggedIn ? '/dashboard' : '/acceso'} className="brand">
+          <a
+            href={isLoggedIn ? '/dashboard' : '/acceso'}
+            className="brand"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateFresh(isLoggedIn ? '/dashboard' : '/acceso');
+            }}
+          >
           <div className="brand-logo-wrap">
             <Image
               src="/branding/logo.png"
@@ -172,7 +180,11 @@ export default function Navbar() {
                     key={item.href}
                     href={item.href}
                     className={`nav-link ${active ? 'active' : ''}`}
-                    onClick={() => setMenuOpen(false)}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setMenuOpen(false);
+                      navigateFresh(item.href);
+                    }}
                   >
                     {item.label}
                   </a>
